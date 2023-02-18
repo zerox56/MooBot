@@ -1,6 +1,6 @@
 using Discord.Interactions;
 
-namespace Modules.Commands
+namespace Moobot.Modules.Commands
 {
     public class FunCommands : InteractionModuleBase<SocketInteractionContext>
     {

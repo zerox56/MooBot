@@ -2,8 +2,10 @@
 using Discord.Interactions;
 using Discord.WebSocket;
 using dotenv.net;
+using Microsoft.EntityFrameworkCore;
 using Microsoft.Extensions.DependencyInjection;
-using Microsoft.Extensions.Hosting;
+using Microsoft.Extensions.Logging;
+using Moobot.Database;
 using Moobot.Managers;
 
 namespace Moobot
@@ -11,16 +13,28 @@ namespace Moobot
     class Program
     {
         private DiscordSocketClient _client;
+        private InteractionService _commands;
+        private DatabaseContext _databaseContext;
 
         public static Task Main(string[] args) => new Program().MainAsync();
 
         private async Task MainAsync()
         {
             DotEnv.Load();
+            var envVars = DotEnv.Read();
 
-            using IHost host = Host.CreateDefaultBuilder()
-                .ConfigureServices((_, services) =>
-            services
+            var connectionString = $"server={envVars["DATABASE_SERVER"]};user={envVars["DATABASE_USER"]};password={envVars["DATABASE_PASSWORD"]};database={envVars["DATABASE_DATABASE"]}";
+            var serverVersion = new MySqlServerVersion(new Version(10, 10, 3));
+
+            ServiceCollection collection = new ServiceCollection();
+            collection
+            .AddDbContext<DatabaseContext>(
+                dbContextOptions => dbContextOptions
+                    .UseMySql(connectionString, serverVersion)
+                    .LogTo(Console.WriteLine, LogLevel.Information)
+                    .EnableSensitiveDataLogging()
+                    .EnableDetailedErrors()
+            )
             .AddSingleton(x => new DiscordSocketClient(new DiscordSocketConfig
             {
                 DefaultRetryMode = RetryMode.AlwaysFail,
@@ -30,21 +44,20 @@ namespace Moobot
             }))
             // .AddTransient<LoggerService>()
             .AddSingleton(x => new InteractionService(x.GetRequiredService<DiscordSocketClient>()))
-            .AddSingleton<InteractionManager>())
-            .Build();
+            .AddSingleton<InteractionManager>();
 
-            await RunAsync(host);
+            ServiceManager.SetProvider(collection);
+
+            await RunAsync();
         }
 
-        public async Task RunAsync(IHost host)
+        public async Task RunAsync()
         {
-            using IServiceScope serviceScope = host.Services.CreateScope();
-            IServiceProvider provider = serviceScope.ServiceProvider;
+            _client = ServiceManager.GetService<DiscordSocketClient>();
+            _commands = ServiceManager.Provider.GetRequiredService<InteractionService>();
+            _databaseContext = ServiceManager.GetService<DatabaseContext>();
 
-            var commands = provider.GetRequiredService<InteractionService>();
-            _client = provider.GetRequiredService<DiscordSocketClient>();
-
-            await provider.GetRequiredService<InteractionManager>().InitializeAsync();
+            await ServiceManager.Provider.GetRequiredService<InteractionManager>().InitializeAsync();
 
             // Subscribe to client log events
             // _client.Log += _ => provider.GetRequiredService<LoggerService>().Log(_);
@@ -56,12 +69,11 @@ namespace Moobot
                 // If running the bot with DEBUG flag, register all commands to guild specified in config
                 if (IsDebug())
                     // Id of the test guild can be provided from the Configuration object
-                    await commands.RegisterCommandsToGuildAsync(UInt64.Parse(DotEnv.Read()["TEST_GUILD"]), true);
+                    await _commands.RegisterCommandsToGuildAsync(UInt64.Parse(DotEnv.Read()["TEST_GUILD"]), true);
                 else
                     // If not debug, register commands globally
-                    await commands.RegisterCommandsGloballyAsync(true);
+                    await _commands.RegisterCommandsGloballyAsync(true);
             };
-
 
             await _client.LoginAsync(Discord.TokenType.Bot, DotEnv.Read()["DISCORD_TOKEN"]);
             await _client.StartAsync();

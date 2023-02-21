@@ -1,6 +1,7 @@
 using Discord.Interactions;
 using dotenv.net;
 using Moobot.Database;
+using Moobot.Database.Models.Entities;
 using Moobot.Database.Queries;
 using Moobot.Managers;
 
@@ -18,7 +19,16 @@ namespace Moobot.Modules.Commands
                 return;
             }
 
-            var guildSet = await ServiceManager.GetService<DatabaseContext>().Guild.GetGuildById(guild.Id);
+            var dbContext = ServiceManager.GetService<DatabaseContext>();
+
+            Guild guildSet = await dbContext.Guild.GetGuildById(guild.Id);
+
+            if (guildSet.Channels.Count > 0 && guildSet.Channels.AsEnumerable().FirstOrDefault(c => c.Id == Context.Channel.Id) != null)
+            {
+                var channelSet = await dbContext.Channel.GetChannelById(Context.Channel.Id);
+                await RespondAsync(channelSet.Link);
+                return;
+            }
 
             if (guildSet.GlobalLink == "")
             {
@@ -60,12 +70,20 @@ namespace Moobot.Modules.Commands
 
                 if (bool.Parse(currentChannel))
                 {
-                    await RespondAsync("Not supported", ephemeral: true);
-                    return;
+                    var channel = Context.Channel;
+                    var channelSet = await dbContext.Channel.GetChannelById(channel.Id);
+                    if (channelSet == null)
+                    {
+                        channelSet = await dbContext.Channel.CreateChannelById(channel.Id, guild.Id);
+                    }
+
+                    channelSet.Link = url;
+                    dbContext.SaveChanges();
+                    await RespondAsync("The link has been set on this channel", ephemeral: true);
                 }
                 else
                 {
-                    guildSet.GlobalLink = url;
+                    guildSet.Link = url;
                     dbContext.SaveChanges();
                     await RespondAsync("The link has been set on the whole server", ephemeral: true);
                 }

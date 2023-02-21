@@ -8,27 +8,30 @@ namespace Moobot.Database.Queries
     {
         public static async Task<dynamic> GetGuildById(this DbSet<Guild> guildSet, ulong guildId, bool createIfNotExists = false)
         {
-            try
-            {
-                Guild guild = await guildSet.Where(g => g.Id == guildId).FirstOrDefaultAsync();
-                if (guild != default(Guild) || !createIfNotExists)
-                {
-                    return guild;
-                }
+            Guild guild = await guildSet.Where(g => g.Id == guildId).FirstOrDefaultAsync();
+            var dbContext = ServiceManager.GetService<DatabaseContext>();
 
-                // TODO: Look into how to do this more cleanly
-                var dbContext = ServiceManager.GetService<DatabaseContext>();
-                Guild newGuild = new Guild { Id = guildId };
-                dbContext.Add(newGuild);
-                await dbContext.SaveChangesAsync();
-
-                return await guildSet.Where(g => g.Id == guildId).FirstOrDefaultAsync();
-            }
-            catch (Exception e)
+            if (guild != default(Guild) || !createIfNotExists)
             {
-                Console.WriteLine(e.ToString());
-                return await guildSet.Where(g => g.Id == guildId).FirstOrDefaultAsync();
+                await dbContext.Entry(guild).Collection(g => g.Channels).LoadAsync();
+                return guild;
             }
+
+            // TODO: Look into how to do this more cleanly
+            Guild newGuild = new Guild { Id = guildId };
+            dbContext.Add(newGuild);
+            await dbContext.SaveChangesAsync();
+
+            return await guildSet.Where(g => g.Id == guildId).FirstOrDefaultAsync();
+        }
+
+        public static async Task<dynamic> AddChannelToGuildById(this DbSet<Guild> guildSet, ulong guildId, Channel channel)
+        {
+            Guild guild = await GetGuildById(guildSet, guildId);
+            guild.Channels.Add(channel);
+            await ServiceManager.GetService<DatabaseContext>().SaveChangesAsync();
+
+            return await guildSet.Where(g => g.Id == guildId).FirstOrDefaultAsync();
         }
     }
 }

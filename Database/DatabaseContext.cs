@@ -18,6 +18,7 @@ namespace Moobot.Database
         protected override void OnModelCreating(ModelBuilder builder)
         {
             builder.ApplyConfiguration(new GuildConfiguration());
+            builder.ApplyConfiguration(new ChannelConfiguration());
         }
 
         public override int SaveChanges()

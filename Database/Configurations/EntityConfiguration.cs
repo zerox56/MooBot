@@ -9,8 +9,9 @@ namespace Moobot.Database.Configurations
     {
         public virtual void Configure(EntityTypeBuilder<T> builder)
         {
-            builder.Property(m => m.DateCreated).HasColumnType(DataConstants.SqlServer.DateTime2).HasDefaultValueSql(DataConstants.SqlServer.SysDateTime);
-            builder.Property(p => p.DateModified).HasColumnType(DataConstants.SqlServer.DateTime2);
+            builder.HasKey(e => e.Id);
+            builder.Property(e => e.DateCreated).HasColumnType(DataConstants.SqlServer.DateTime2).HasDefaultValueSql(DataConstants.SqlServer.SysDateTime);
+            builder.Property(e => e.DateModified).HasColumnType(DataConstants.SqlServer.DateTime2);
         }
     }
 }

@@ -10,6 +10,7 @@ namespace Moobot.Database.Configurations
         {
             builder.Property(c => c.Link).HasDefaultValue("");
             builder.HasOne(c => c.Guild).WithMany(g => g.Channels).HasForeignKey(c => c.GuildId);
+            builder.HasMany(c => c.Reminders).WithOne(r => r.Channel).HasForeignKey(r => r.ChannelId);
 
             base.Configure(builder);
         }

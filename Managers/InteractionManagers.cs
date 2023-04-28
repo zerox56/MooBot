@@ -2,6 +2,7 @@ using System.Reflection;
 using Discord;
 using Discord.Interactions;
 using Discord.WebSocket;
+using Moobot.Modules.Commands;
 
 namespace Moobot.Managers
 {
@@ -25,6 +26,8 @@ namespace Moobot.Managers
 
             // Process the InteractionCreated payloads to execute Interactions commands
             _client.InteractionCreated += HandleInteraction;
+            _client.ModalSubmitted += OnModalSubmitted;
+            _client.ButtonExecuted += OnButtonClicked;
 
             // Process the command execution results 
             _commands.SlashCommandExecuted += SlashCommandExecuted;
@@ -64,6 +67,48 @@ namespace Moobot.Managers
                 if (arg.Type == InteractionType.ApplicationCommand)
                     await arg.GetOriginalResponseAsync().ContinueWith(async (msg) => await msg.Result.DeleteAsync());
             }
+        }
+
+        private Task OnModalSubmitted(SocketModal modal)
+        {
+            _ = Task.Run(async () =>
+            {
+                switch (modal.Data.CustomId)
+                {
+                    case "reminder":
+                        await GuildCommands.CreateReminderFollowUp(modal);
+                        await modal.DeleteOriginalResponseAsync();
+                        break;
+                    default:
+                        Console.WriteLine($"Uncaught case {modal.Data.CustomId} retrieved");
+                        break;
+                }
+            });
+            return Task.CompletedTask;
+        }
+
+        private Task OnButtonClicked(SocketMessageComponent component)
+        {
+            _ = Task.Run(async () =>
+            {
+                switch (component.Data.CustomId)
+                {
+                    case "setupReminder":
+                        await GuildCommands.CreateReminder(component);
+                        await component.DeleteOriginalResponseAsync();
+                        break;
+                    case "reminderManagerUpdate":
+                        break;
+                    case "reminderManagerView":
+                        await GuildCommands.GetReminders(component);
+                        await component.DeleteOriginalResponseAsync();
+                        break;
+                    default:
+                        Console.WriteLine($"Uncaught case {component.Data.CustomId} retrieved");
+                        break;
+                }
+            });
+            return Task.CompletedTask;
         }
     }
 }

@@ -9,5 +9,7 @@ namespace Moobot.Database.Models.Entities
         public string GlobalLink { get; set; }
 
         public ICollection<Channel> Channels { get; set; }
+
+        public ICollection<Role> Roles { get; set; }
     }
 }

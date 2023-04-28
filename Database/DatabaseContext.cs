@@ -14,11 +14,19 @@ namespace Moobot.Database
 
         public virtual DbSet<Guild> Guild { get; set; }
         public virtual DbSet<Channel> Channel { get; set; }
+        public virtual DbSet<Role> Role { get; set; }
+        public virtual DbSet<User> User { get; set; }
+        public virtual DbSet<Reminder> Reminder { get; set; }
+        public virtual DbSet<UserReminder> UserReminder { get; set; }
 
         protected override void OnModelCreating(ModelBuilder builder)
         {
             builder.ApplyConfiguration(new GuildConfiguration());
             builder.ApplyConfiguration(new ChannelConfiguration());
+            builder.ApplyConfiguration(new RoleConfiguration());
+            builder.ApplyConfiguration(new UserConfiguration());
+            builder.ApplyConfiguration(new ReminderConfiguration());
+            builder.ApplyConfiguration(new UserReminderConfiguration());
         }
 
         public override int SaveChanges()

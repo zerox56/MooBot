@@ -1,4 +1,5 @@
 using System.Reflection;
+using System.Text.RegularExpressions;
 using Discord;
 using Discord.Interactions;
 using Discord.WebSocket;
@@ -73,11 +74,23 @@ namespace Moobot.Managers
         {
             _ = Task.Run(async () =>
             {
-                switch (modal.Data.CustomId)
+                string customId = modal.Data.CustomId;
+                ulong customIdNumber;
+                var split = Regex.Split(customId, @"\D+");
+                string numberInId = split[1];
+                ulong.TryParse(numberInId, out customIdNumber);
+
+                customId = Regex.Replace(customId, @"[\d-]", string.Empty);
+
+                switch (customId)
                 {
-                    case "reminder":
+                    case "newReminder":
                         await GuildCommands.CreateReminderFollowUp(modal);
-                        await modal.DeleteOriginalResponseAsync();
+                        // await modal.DeleteOriginalResponseAsync();
+                        break;
+                    case "updateReminder":
+                        await GuildCommands.UpdateReminderFollowUp(modal, customIdNumber);
+                        // await modal.DeleteOriginalResponseAsync();
                         break;
                     default:
                         Console.WriteLine($"Uncaught case {modal.Data.CustomId} retrieved");
@@ -91,17 +104,22 @@ namespace Moobot.Managers
         {
             _ = Task.Run(async () =>
             {
-                switch (component.Data.CustomId)
+                string customId = component.Data.CustomId;
+                int customIdNumber = -1;
+                Int32.TryParse(customId.TrimEnd(new[] { '0', '1', '2', '3', '4', '5', '6', '7', '8', '9' }), out customIdNumber);
+
+                switch (customId)
                 {
                     case "setupReminder":
                         await GuildCommands.CreateReminder(component);
-                        await component.DeleteOriginalResponseAsync();
+                        // await component.DeleteOriginalResponseAsync();   
                         break;
-                    case "reminderManagerUpdate":
+                    case "updateReminder":
+                        await GuildCommands.GetReminderModal(component, customIdNumber);
                         break;
                     case "viewReminder":
                         await GuildCommands.GetReminders(component);
-                        await component.DeleteOriginalResponseAsync();
+                        // await component.DeleteOriginalResponseAsync();
                         break;
                     default:
                         Console.WriteLine($"Uncaught case {component.Data.CustomId} retrieved");

@@ -132,7 +132,7 @@ namespace Moobot.Modules.Commands
             //TODO: Keep cron but make seperate or more easily adjustable field for users
             var modal = new ModalBuilder()
                 .WithTitle("Set reminder")
-                .WithCustomId("reminder")
+                .WithCustomId("newReminder")
                 .AddTextInput("Title", "reminderTitle", placeholder: "Daily reset", required: true)
                 .AddTextInput("Description", "reminderDescription", TextInputStyle.Paragraph, "This is a daily reset", required: false)
                 .AddTextInput("Cron", "reminderCron", placeholder: "0 18 * * *", required: true)
@@ -140,11 +140,6 @@ namespace Moobot.Modules.Commands
                 .AddTextInput("Optional gif tag", "reminderGifTag", placeholder: "reset", required: false);
 
             await interaction.RespondWithModalAsync(modal.Build());
-        }
-
-        public static async Task SetReminderPings(SocketInteraction interaction)
-        {
-            var selectAction = new SelectMenuBuilder();
         }
 
         public static async Task GetReminders(SocketInteraction interaction)
@@ -208,6 +203,73 @@ namespace Moobot.Modules.Commands
             {
                 await modal.RespondAsync("Something went wrong creating the reminder");
             }
+        }
+
+        public static async Task GetReminderModal(SocketInteraction interaction, int reminderNum = -1)
+        {
+            if (interaction.GuildId == null)
+            {
+                await interaction.RespondAsync("Something went wrong");
+                return;
+            }
+
+            var dbContext = ServiceManager.GetService<DatabaseContext>();
+            ICollection<Reminder> remindersCollection = await dbContext.Channel.GetReminders(interaction.Channel.Id);
+            List<Reminder> reminders = remindersCollection.ToList();
+            if (reminders.Count == 0)
+            {
+                await interaction.RespondAsync("There are no reminders on this channel");
+                return;
+            }
+            if (reminders.Count > 1 && reminderNum != -1)
+            {
+                var component = new ComponentBuilder();
+                for (int reminderId = 0; reminderId < reminders.Count; reminderId++)
+                {
+                    Reminder reminder = reminders[reminderId];
+                    component.WithButton(label: reminder.Title, customId: "updateReminder" + reminderId, row: reminderId);
+                }
+                await interaction.RespondAsync(text: "Choose a reminder to update", components: component.Build(), ephemeral: true);
+            }
+            else
+            {
+                reminderNum = 0;
+            }
+
+            Reminder selectedReminder = reminders[reminderNum];
+
+            var modal = new ModalBuilder()
+                .WithTitle("Update reminder")
+                .WithCustomId("updateReminder" + selectedReminder.Id)
+                .AddTextInput("Title", "reminderTitle", value: selectedReminder.Title, required: true)
+                .AddTextInput("Description", "reminderDescription", TextInputStyle.Paragraph, value: selectedReminder.Description, required: false)
+                .AddTextInput("Cron", "reminderCron", value: selectedReminder.Cron, required: true)
+                .AddTextInput("Time zone", "reminderTimeZone", value: selectedReminder.TimeZone, required: true)
+                .AddTextInput("Optional gif tag", "reminderGifTag", value: selectedReminder.GifTag, required: false);
+
+            await interaction.RespondWithModalAsync(modal.Build());
+        }
+
+        public static async Task UpdateReminderFollowUp(SocketModal modal, ulong reminderId)
+        {
+            if (modal.GuildId == null)
+            {
+                await modal.RespondAsync("Something went wrong");
+                return;
+            }
+
+            var dbContext = ServiceManager.GetService<DatabaseContext>();
+
+            Reminder reminderSet = await dbContext.Reminder.GetReminderById(reminderId);
+            reminderSet.Title = modal.Data.Components.First(d => d.CustomId == "reminderTitle").Value;
+            reminderSet.Description = modal.Data.Components.First(d => d.CustomId == "reminderDescription").Value;
+            //TODO: Check if cron is valid
+            reminderSet.Cron = modal.Data.Components.First(d => d.CustomId == "reminderCron").Value;
+            reminderSet.TimeZone = modal.Data.Components.First(d => d.CustomId == "reminderTimeZone").Value;
+            reminderSet.GifTag = modal.Data.Components.First(d => d.CustomId == "reminderGifTag").Value;
+
+            dbContext.SaveChanges();
+            await modal.RespondAsync("Reminder has been updated!", ephemeral: true);
         }
     }
 }

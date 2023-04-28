@@ -14,6 +14,7 @@ namespace Moobot.Database.Queries
             if (guild != default(Guild) || !createIfNotExists)
             {
                 await dbContext.Entry(guild).Collection(g => g.Channels).LoadAsync();
+                await dbContext.Entry(guild).Collection(g => g.Reminders).LoadAsync();
                 return guild;
             }
 
@@ -32,6 +33,12 @@ namespace Moobot.Database.Queries
             await ServiceManager.GetService<DatabaseContext>().SaveChangesAsync();
 
             return await guildSet.Where(g => g.Id == guildId).FirstOrDefaultAsync();
+        }
+
+        public static async Task<dynamic> GetReminders(this DbSet<Guild> guildSet, ulong guildId)
+        {
+            Guild guild = await GetGuildById(guildSet, guildId);
+            return guild.Reminders;
         }
     }
 }

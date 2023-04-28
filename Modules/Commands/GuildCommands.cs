@@ -149,14 +149,47 @@ namespace Moobot.Modules.Commands
 
         public static async Task GetReminders(SocketInteraction interaction)
         {
-            await interaction.RespondAsync("Here are your reminders");
+            if (interaction.GuildId == null)
+            {
+                await interaction.RespondAsync("Something went wrong");
+                return;
+            }
+            var dbContext = ServiceManager.GetService<DatabaseContext>();
+            ICollection<Reminder> reminders = await dbContext.Guild.GetReminders(interaction.GuildId.Value);
+            if (reminders.Count == 0)
+            {
+                await interaction.RespondAsync("There are no reminders on this server");
+                return;
+            }
+
+            reminders = reminders.OrderBy(r => r.ChannelId).ToList();
+            var remindersMessage = "**Reminders on this server are:**" + Environment.NewLine;
+            ulong currentChannel = 0;
+
+            foreach (Reminder reminder in reminders)
+            {
+                if (currentChannel != reminder.ChannelId)
+                {
+                    currentChannel = reminder.ChannelId;
+                    remindersMessage += $"**{MentionUtils.MentionChannel(reminder.ChannelId)}:**" + Environment.NewLine;
+                }
+                //TODO: Convert cron to readable info
+                remindersMessage += $"\"{reminder.Title}\" posted every {reminder.Cron}" + Environment.NewLine;
+            }
+            await interaction.RespondAsync(remindersMessage);
         }
 
         public static async Task CreateReminderFollowUp(SocketModal modal)
         {
+            if (modal.GuildId == null)
+            {
+                await modal.RespondAsync("Something went wrong");
+                return;
+            }
             var reminder = new Reminder
             {
                 ChannelId = modal.Channel.Id,
+                GuildId = modal.GuildId.Value,
                 Title = modal.Data.Components.First(d => d.CustomId == "reminderTitle").Value,
                 Description = modal.Data.Components.First(d => d.CustomId == "reminderDescription").Value,
                 //TODO: Check if cron is valid

@@ -11,6 +11,12 @@ namespace Moobot.Database.Models.Entities
         [Column("channel")]
         public Channel Channel { get; set; }
 
+        [Column("guild_id")]
+        public ulong GuildId { get; set; }
+
+        [Column("guild")]
+        public Guild Guild { get; set; }
+
         [Column("title")]
         public string Title { get; set; }
 

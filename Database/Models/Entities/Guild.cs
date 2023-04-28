@@ -10,6 +10,8 @@ namespace Moobot.Database.Models.Entities
 
         public ICollection<Channel> Channels { get; set; }
 
+        public ICollection<Reminder> Reminders { get; set; }
+
         public ICollection<Role> Roles { get; set; }
     }
 }

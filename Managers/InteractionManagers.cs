@@ -99,7 +99,7 @@ namespace Moobot.Managers
                         break;
                     case "reminderManagerUpdate":
                         break;
-                    case "reminderManagerView":
+                    case "viewReminder":
                         await GuildCommands.GetReminders(component);
                         await component.DeleteOriginalResponseAsync();
                         break;

@@ -86,11 +86,9 @@ namespace Moobot.Managers
                 {
                     case "newReminder":
                         await GuildCommands.CreateReminderFollowUp(modal);
-                        // await modal.DeleteOriginalResponseAsync();
                         break;
                     case "updateReminder":
                         await GuildCommands.UpdateReminderFollowUp(modal, customIdNumber);
-                        // await modal.DeleteOriginalResponseAsync();
                         break;
                     default:
                         Console.WriteLine($"Uncaught case {modal.Data.CustomId} retrieved");
@@ -112,14 +110,12 @@ namespace Moobot.Managers
                 {
                     case "setupReminder":
                         await GuildCommands.CreateReminder(component);
-                        // await component.DeleteOriginalResponseAsync();   
                         break;
                     case "updateReminder":
-                        await GuildCommands.GetReminderModal(component, customIdNumber);
+                        await GuildCommands.UpdateReminder(component, customIdNumber);
                         break;
                     case "viewReminder":
                         await GuildCommands.GetReminders(component);
-                        // await component.DeleteOriginalResponseAsync();
                         break;
                     default:
                         Console.WriteLine($"Uncaught case {component.Data.CustomId} retrieved");

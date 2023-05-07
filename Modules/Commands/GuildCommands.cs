@@ -116,7 +116,7 @@ namespace Moobot.Modules.Commands
                 var component = new ComponentBuilder();
                 component.WithButton(label: "Setup reminder", customId: "setupReminder", row: 0);
                 component.WithButton(label: "View all reminder", customId: "viewReminder", row: 1);
-                component.WithButton(label: "Add yourself to a reminder", customId: "addReminder", row: 2);
+                component.WithButton(label: "Add yourself to a reminder", customId: "changeUserStatusReminder", row: 2);
                 component.WithButton(label: "Update reminder", customId: "updateReminder", row: 3);
                 await RespondAsync(text: "Manage all reminders", components: component.Build(), ephemeral: true);
             }
@@ -205,7 +205,7 @@ namespace Moobot.Modules.Commands
             }
         }
 
-        public static async Task GetReminderModal(SocketInteraction interaction, int reminderNum = -1)
+        public static async Task UpdateReminder(SocketInteraction interaction, int reminderNum = -1)
         {
             if (interaction.GuildId == null)
             {
@@ -270,6 +270,53 @@ namespace Moobot.Modules.Commands
 
             dbContext.SaveChanges();
             await modal.RespondAsync("Reminder has been updated!", ephemeral: true);
+        }
+
+        public static async Task ChangeUserReminderStatus(SocketInteraction interaction, int reminderNum = -1)
+        {
+            if (interaction.GuildId == null)
+            {
+                await interaction.RespondAsync("Something went wrong");
+                return;
+            }
+
+            var dbContext = ServiceManager.GetService<DatabaseContext>();
+            ICollection<Reminder> remindersCollection = await dbContext.Channel.GetReminders(interaction.Channel.Id);
+            List<Reminder> reminders = remindersCollection.ToList();
+            if (reminders.Count == 0)
+            {
+                await interaction.RespondAsync("There are no reminders on this channel");
+                return;
+            }
+            if (reminders.Count > 1 && reminderNum != -1)
+            {
+                var component = new ComponentBuilder();
+                for (int reminderId = 0; reminderId < reminders.Count; reminderId++)
+                {
+                    Reminder reminder = reminders[reminderId];
+                    component.WithButton(label: reminder.Title, customId: "changeUserStatusReminder" + reminderId, row: reminderId);
+                }
+                await interaction.RespondAsync(text: "Choose a reminder to add or remove yourself from", components: component.Build(), ephemeral: true);
+            }
+            else
+            {
+                reminderNum = 0;
+            }
+
+            Reminder selectedReminder = reminders[reminderNum];
+            UserReminder userReminder = await dbContext.UserReminder.GetUserReminderByIds(interaction.User.Id, interaction.Channel.Id);
+            var action = "You are now being notified for this reminder";
+            if (userReminder != default(UserReminder))
+            {
+                await dbContext.UserReminder.CreateUserReminderByIds(interaction.User.Id, interaction.Channel.Id);
+            }
+            else
+            {
+                await dbContext.UserReminder.DeleteUserReminderByIds(interaction.User.Id, interaction.Channel.Id);
+                action = "You won't be notified anymore for this reminder";
+            }
+
+            await interaction.RespondAsync(text: action, ephemeral: true);
         }
     }
 }

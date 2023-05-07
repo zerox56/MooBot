@@ -27,5 +27,10 @@ namespace Moobot.Database.Queries
         {
             return await reminderSet.Where(r => r.Id == reminderId).FirstOrDefaultAsync();
         }
+
+        public static async Task<dynamic> GetAllReminders(this DbSet<Reminder> reminderSet)
+        {
+            return await reminderSet.ToListAsync();
+        }
     }
 }

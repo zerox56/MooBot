@@ -7,6 +7,7 @@ using Microsoft.Extensions.DependencyInjection;
 using Microsoft.Extensions.Logging;
 using Moobot.Database;
 using Moobot.Managers;
+using Moobot.Modules.Commands;
 
 namespace Moobot
 {
@@ -77,6 +78,8 @@ namespace Moobot
 
             await _client.LoginAsync(Discord.TokenType.Bot, DotEnv.Read()["DISCORD_TOKEN"]);
             await _client.StartAsync();
+
+            await ReminderCommands.InitializeReminders();
 
             await Task.Delay(-1);
         }

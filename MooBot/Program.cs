@@ -1,13 +1,14 @@
 ﻿using Discord;
 using Discord.Interactions;
 using Discord.WebSocket;
-using dotenv.net;
 using Microsoft.EntityFrameworkCore;
+using Microsoft.Extensions.Configuration;
 using Microsoft.Extensions.DependencyInjection;
 using Microsoft.Extensions.Logging;
 using Moobot.Database;
 using Moobot.Managers;
 using Moobot.Modules.Commands;
+using MooBot.Configuration;
 
 namespace Moobot
 {
@@ -16,15 +17,20 @@ namespace Moobot
         private DiscordSocketClient _client;
         private InteractionService _commands;
         private DatabaseContext _databaseContext;
+        private IConfigurationRoot _config;
 
         public static Task Main(string[] args) => new Program().MainAsync();
 
         private async Task MainAsync()
         {
-            DotEnv.Load();
-            var envVars = DotEnv.Read();
+            _config = new ConfigurationBuilder()
+                .AddJsonFile("appsettings.json")
+            .Build();
 
-            var connectionString = $"server={envVars["DATABASE_SERVER"]};user={envVars["DATABASE_USER"]};password={envVars["DATABASE_PASSWORD"]};database={envVars["DATABASE_DATABASE"]}";
+            ApplicationConfiguration.Configuration = _config;
+
+            var databaseConfig = _config.GetSection("Database");
+            var connectionString = $"server={databaseConfig["Server"]};user={databaseConfig["User"]};password={databaseConfig["Password"]};database={databaseConfig["Database"]}";
             var serverVersion = new MySqlServerVersion(new Version(10, 10, 3));
 
             ServiceCollection collection = new ServiceCollection();
@@ -65,18 +71,20 @@ namespace Moobot
             // // Subscribe to slash command log events
             // commands.Log += _ => provider.GetRequiredService<LoggerService>().Log(_);
 
+            var discordConfig = _config.GetSection("Discord");
+
             _client.Ready += async () =>
             {
                 // If running the bot with DEBUG flag, register all commands to guild specified in config
                 if (IsDebug())
                     // Id of the test guild can be provided from the Configuration object
-                    await _commands.RegisterCommandsToGuildAsync(UInt64.Parse(DotEnv.Read()["TEST_GUILD"]), true);
+                    await _commands.RegisterCommandsToGuildAsync(UInt64.Parse(discordConfig["TestGuildId"]), true);
                 else
                     // If not debug, register commands globally
                     await _commands.RegisterCommandsGloballyAsync(true);
             };
 
-            await _client.LoginAsync(Discord.TokenType.Bot, DotEnv.Read()["DISCORD_TOKEN"]);
+            await _client.LoginAsync(Discord.TokenType.Bot, discordConfig["Token"]);
             await _client.StartAsync();
 
             await ReminderCommands.InitializeReminders();

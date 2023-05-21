@@ -127,6 +127,9 @@ namespace Moobot.Managers
                     case "deleteReminder":
                         await ReminderCommands.DeleteReminder(component, customIdNumber);
                         break;
+                    case "changeUserStatusReminder":
+                        await ReminderCommands.ChangeUserReminderStatus(component, customIdNumber);
+                        break;
                     default:
                         Console.WriteLine($"Uncaught case {component.Data.CustomId} retrieved");
                         break;

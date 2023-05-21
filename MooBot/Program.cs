@@ -9,6 +9,7 @@ using Moobot.Database;
 using Moobot.Managers;
 using Moobot.Modules.Commands;
 using MooBot.Configuration;
+using MooBot.Modules.Commands.Reminders;
 
 namespace Moobot
 {
@@ -84,10 +85,11 @@ namespace Moobot
                     await _commands.RegisterCommandsGloballyAsync(true);
             };
 
-            await _client.LoginAsync(Discord.TokenType.Bot, discordConfig["Token"]);
+            await _client.LoginAsync(TokenType.Bot, discordConfig["Token"]);
             await _client.StartAsync();
 
-            await ReminderCommands.InitializeReminders();
+
+            await ReminderManager.InitializeReminders();
 
             await Task.Delay(-1);
         }

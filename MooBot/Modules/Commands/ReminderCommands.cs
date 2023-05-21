@@ -1,37 +1,19 @@
 using Discord;
 using Discord.Interactions;
 using Discord.WebSocket;
-using Microsoft.VisualBasic;
 using Moobot.Database;
 using Moobot.Database.Models.Entities;
 using Moobot.Database.Queries;
 using Moobot.Managers;
-using Moobot.Modules.Commands.Reminders;
+using MooBot.Database.Queries;
+using MooBot.Modules.Commands.Reminders;
 using MooBot.Utils;
-using Quartz;
-using Quartz.Impl;
 
 namespace Moobot.Modules.Commands
 {
     public class ReminderCommands : InteractionModuleBase<SocketInteractionContext>
     {
-        public static async Task InitializeReminders()
-        {
-            IScheduler scheduler = await StdSchedulerFactory.GetDefaultScheduler();
-            await scheduler.Start();
-
-            var dbContext = ServiceManager.GetService<DatabaseContext>();
-            List<Reminder> reminders = await dbContext.Reminder.GetAllReminders();
-
-            foreach (Reminder reminder in reminders)
-            {
-                await CreatScheduleJob(scheduler, reminder);
-            }
-
-            await scheduler.Shutdown();
-        }
-
-        [SlashCommand("manageReminder", "Manage guild reminders")]
+        [SlashCommand("reminder-manage", "Manage guild reminders")]
         public async Task SendManageReminderOptions()
         {
             var guild = Context.Guild;
@@ -90,7 +72,7 @@ namespace Moobot.Modules.Commands
                     .WithCustomId("newReminder")
                     .AddTextInput("Title", "reminderTitle", placeholder: "Daily reset", required: true)
                     .AddTextInput("Description", "reminderDescription", TextInputStyle.Paragraph, "This is a daily reset", required: false)
-                    .AddTextInput("Time (UTC)", "reminderTime", placeholder: "18:00", required: false)
+                    .AddTextInput("Time (UTC)", "reminderTime", placeholder: "18:00", required: true)
                     .AddTextInput("Periodicity", "reminderPeriodicity", placeholder: "Daily or Weekly", required: true)
                     .AddTextInput("Day of the Week", "reminderDayOfWeek", placeholder: "Saturday", required: false);
 
@@ -106,23 +88,41 @@ namespace Moobot.Modules.Commands
                 await modal.RespondAsync("Something went wrong");
                 return;
             }
+
+            if (!Enum.TryParse(modal.Data.Components.First(d => d.CustomId == "reminderPeriodicity").Value.Trim(), out PeriodicityEnum periodicity))
+            {
+                await modal.RespondAsync("Didn't select a valid periodicity");
+                return;
+            }
+
+            var rawDayOfWeek = modal.Data.Components.First(d => d.CustomId == "reminderDayOfWeek").Value.Trim();
+            DayOfWeek dayOfWeek = DayOfWeek.Sunday;
+            if (rawDayOfWeek != string.Empty)
+            {
+                if (!Enum.TryParse(rawDayOfWeek, out dayOfWeek))
+                {
+                    await modal.RespondAsync("Didn't select a valid day of the week");
+                    return;
+                }
+            }
+
             var reminder = new Reminder
             {
                 ChannelId = modal.Channel.Id,
                 GuildId = modal.GuildId.Value,
-                Title = modal.Data.Components.First(d => d.CustomId == "reminderTitle").Value,
-                Description = modal.Data.Components.First(d => d.CustomId == "reminderDescription").Value,
-                Time = modal.Data.Components.First(d => d.CustomId == "reminderTime").Value,
-                //TODO: Check if periodicity and day of week is valid
-                Periodicity = (PeriodicityEnum)Enum.Parse(typeof(PeriodicityEnum), modal.Data.Components.First(d => d.CustomId == "reminderPeriodicity").Value),
-                DayOfWeek = (DayOfWeek)Enum.Parse(typeof(DayOfWeek), modal.Data.Components.First(d => d.CustomId == "reminderDayOfWeek").Value)
+                Title = modal.Data.Components.First(d => d.CustomId == "reminderTitle").Value.Trim(),
+                Description = modal.Data.Components.First(d => d.CustomId == "reminderDescription").Value.Trim(),
+                Time = modal.Data.Components.First(d => d.CustomId == "reminderTime").Value.Trim(),
+                Periodicity = periodicity.ToString(),
+                DayOfWeek = dayOfWeek.ToString(),
+                GifTag = string.Empty
             };
 
             var dbContext = ServiceManager.GetService<DatabaseContext>();
             var reminderSet = await dbContext.Reminder.CreateReminder(reminder);
             if (reminderSet != null)
             {
-                await AddReminder(reminder);
+                await ReminderManager.AddReminder(reminder);
                 await modal.RespondAsync("Created the reminder in this channel!");
             }
             else
@@ -163,19 +163,41 @@ namespace Moobot.Modules.Commands
                 return;
             }
 
+            if (!Enum.TryParse(modal.Data.Components.First(d => d.CustomId == "reminderPeriodicity").Value.Trim(), out PeriodicityEnum periodicity))
+            {
+                await modal.RespondAsync("Didn't select a valid periodicity");
+                return;
+            }
+
+            var rawDayOfWeek = modal.Data.Components.First(d => d.CustomId == "reminderDayOfWeek").Value.Trim();
+            DayOfWeek dayOfWeek = DayOfWeek.Sunday;
+            if (rawDayOfWeek != string.Empty)
+            {
+                if (!Enum.TryParse(rawDayOfWeek, out dayOfWeek))
+                {
+                    await modal.RespondAsync("Didn't select a valid day of the week");
+                    return;
+                }
+            }
+
             var dbContext = ServiceManager.GetService<DatabaseContext>();
 
             Reminder reminderSet = await dbContext.Reminder.GetReminderById(reminderId);
             var oldTitle = reminderSet.Title;
-            reminderSet.Title = modal.Data.Components.First(d => d.CustomId == "reminderTitle").Value;
-            reminderSet.Description = modal.Data.Components.First(d => d.CustomId == "reminderDescription").Value;
-            reminderSet.Time = modal.Data.Components.First(d => d.CustomId == "reminderTime").Value;
-            //TODO: Check if periodicity and day of week is valid
-            reminderSet.Periodicity = (PeriodicityEnum)Enum.Parse(typeof(PeriodicityEnum), modal.Data.Components.First(d => d.CustomId == "reminderPeriodicity").Value);
-            reminderSet.DayOfWeek = (DayOfWeek)Enum.Parse(typeof(DayOfWeek), modal.Data.Components.First(d => d.CustomId == "reminderDayOfWeek").Value);
+
+            var reminder = new Reminder
+            {
+                ChannelId = modal.Channel.Id,
+                GuildId = modal.GuildId.Value,
+                Title = modal.Data.Components.First(d => d.CustomId == "reminderTitle").Value.Trim(),
+                Description = modal.Data.Components.First(d => d.CustomId == "reminderDescription").Value.Trim(),
+                Time = modal.Data.Components.First(d => d.CustomId == "reminderTime").Value.Trim(),
+                Periodicity = periodicity.ToString(),
+                DayOfWeek = dayOfWeek.ToString()
+            };
 
             dbContext.SaveChanges();
-            await UpdateReminder(reminderSet, oldTitle);
+            await ReminderManager.UpdateReminder(reminderSet, oldTitle);
             await modal.RespondAsync("Reminder has been updated!", ephemeral: true);
         }
 
@@ -213,7 +235,7 @@ namespace Moobot.Modules.Commands
             reminderSet.GifTag = modal.Data.Components.First(d => d.CustomId == "reminderGif").Value;
 
             dbContext.SaveChanges();
-            await UpdateReminder(reminderSet, reminderSet.Title);
+            await ReminderManager.UpdateReminder(reminderSet, reminderSet.Title);
             await modal.RespondAsync("Gif has been changed for this reminder!", ephemeral: true);
         }
 
@@ -281,7 +303,7 @@ namespace Moobot.Modules.Commands
                     currentChannel = reminder.ChannelId;
                     remindersMessage += $"**{MentionUtils.MentionChannel(reminder.ChannelId)}:**" + Environment.NewLine;
                 }
-                if (reminder.Periodicity == PeriodicityEnum.Daily)
+                if ((PeriodicityEnum)Enum.Parse(typeof(PeriodicityEnum), reminder.Periodicity) == PeriodicityEnum.Daily)
                 {
                     remindersMessage += $"\"{reminder.Title}\" posted every day at {reminder.Time}" + Environment.NewLine;
                 }
@@ -306,15 +328,16 @@ namespace Moobot.Modules.Commands
                 return;
 
             var dbContext = ServiceManager.GetService<DatabaseContext>();
-            UserReminder userReminder = await dbContext.UserReminder.GetUserReminderByIds(interaction.User.Id, interaction.Channel.Id);
+            UserReminder userReminder = await dbContext.UserReminder.GetUserReminderByIds(interaction.User.Id, reminder.Id);
             var action = "You are now being notified for this reminder";
-            if (userReminder != default(UserReminder))
+            if (userReminder == default(UserReminder) || userReminder == null)
             {
-                await dbContext.UserReminder.CreateUserReminderByIds(interaction.User.Id, interaction.Channel.Id);
+                await dbContext.User.GetUserById(interaction.User.Id, true);
+                await dbContext.UserReminder.CreateUserReminderByIds(interaction.User.Id, reminder.Id);
             }
             else
             {
-                await dbContext.UserReminder.DeleteUserReminderByIds(interaction.User.Id, interaction.Channel.Id);
+                await dbContext.UserReminder.DeleteUserReminderByIds(interaction.User.Id, reminder.Id);
                 action = "You won't be notified anymore for this reminder";
             }
 
@@ -348,66 +371,6 @@ namespace Moobot.Modules.Commands
             }
 
             return reminders[0];
-        }
-
-        private static async Task AddReminder(Reminder reminder)
-        {
-            IScheduler scheduler = await StdSchedulerFactory.GetDefaultScheduler();
-            await scheduler.Start();
-
-            await CreatScheduleJob(scheduler, reminder);
-
-            await scheduler.Shutdown();
-        }
-
-        private static async Task UpdateReminder(Reminder reminder, string oldTitle)
-        {
-            IScheduler scheduler = await StdSchedulerFactory.GetDefaultScheduler();
-            await scheduler.Start();
-
-            await DeleteReminder(reminder.GuildId, oldTitle);
-            await CreatScheduleJob(scheduler, reminder);
-
-            await scheduler.Shutdown();
-        }
-
-        private static async Task DeleteReminder(ulong guildId, string title)
-        {
-            IScheduler scheduler = await StdSchedulerFactory.GetDefaultScheduler();
-            await scheduler.DeleteJob(new JobKey($"Reminder-{guildId}-${title}"));
-        }
-
-        private static async Task CreatScheduleJob(IScheduler scheduler, Reminder reminder)
-        {
-            var splitTime = reminder.Time.Split(':');
-            ITrigger? trigger = null;
-            if (reminder.Periodicity == PeriodicityEnum.Daily)
-            {
-                trigger = TriggerBuilder.Create()
-                    .WithDailyTimeIntervalSchedule(
-                        s => s
-                            .WithInterval(24, IntervalUnit.Hour)
-                            .OnEveryDay()
-                            .StartingDailyAt(TimeOfDay.HourAndMinuteOfDay(int.Parse(splitTime[0]), int.Parse(splitTime[1])))
-                        )
-                    .Build();
-            }
-            else
-            {
-                trigger = TriggerBuilder.Create()
-                    .WithSchedule(CronScheduleBuilder.WeeklyOnDayAndHourAndMinute(reminder.DayOfWeek, int.Parse(splitTime[0]), int.Parse(splitTime[1])))
-                    .Build();
-            }
-
-            var reminderData = new Dictionary<string, Reminder>();
-            reminderData.Add("Reminder", reminder);
-
-            IJobDetail job = JobBuilder.Create<ReminderJob>()
-                .WithIdentity($"Reminder-{reminder.GuildId}-${reminder.Title}", "Reminders")
-                .SetJobData(new JobDataMap(reminderData))
-            .Build();
-
-            await scheduler.ScheduleJob(job, trigger);
         }
     }
 }

@@ -28,10 +28,10 @@ namespace Moobot.Database.Models.Entities
         public string Time { get; set; }
 
         [Column("periodicity")]
-        public PeriodicityEnum Periodicity { get; set; }
+        public string Periodicity { get; set; }
 
         [Column("day_of_week")]
-        public DayOfWeek DayOfWeek { get; set; }
+        public string DayOfWeek { get; set; }
 
         [Column("user_reminders")]
         public ICollection<UserReminder> UserReminders { get; set; }

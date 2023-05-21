@@ -29,12 +29,17 @@ namespace Moobot.Database.Queries
             return await userReminderSet.Where(ur => ur.UserId == userId && ur.ReminderId == reminderId).FirstOrDefaultAsync();
         }
 
+        public static async Task<dynamic> GetUserReminderByReminder(this DbSet<UserReminder> userReminderSet, ulong reminderId)
+        {
+            return await userReminderSet.Where(ur => ur.ReminderId == reminderId).ToListAsync();
+        }
+
         public static async Task<dynamic> DeleteUserReminderByIds(this DbSet<UserReminder> userReminderSet, ulong userId, ulong reminderId)
         {
             UserReminder userReminder = await userReminderSet.Where(ur => ur.UserId == userId && ur.ReminderId == reminderId).FirstOrDefaultAsync();
             var dbContext = ServiceManager.GetService<DatabaseContext>();
 
-            if (userReminder != default(UserReminder))
+            if (userReminder == default(UserReminder))
             {
                 return false;
             }

@@ -1,4 +1,5 @@
 using MooBot.Configuration;
+using MooBot.Modules.Commands.Pokemon;
 using MooBot.Modules.Handlers;
 using System.Net.Http.Json;
 using System.Web;
@@ -71,6 +72,20 @@ namespace Moobot.Modules.Handlers
                 return string.Empty;
             }
         }
+
+        public static async Task<Pokemon> GetPokemonJson(string url)
+        {
+            try
+            {
+                var httpClient = new HttpClient();
+                return await httpClient.GetFromJsonAsync<Pokemon>(url);
+            }
+            catch (Exception ex)
+            {
+                Console.WriteLine(ex);
+                return null;
+            }
+}
 
         private static async Task<TenorSearch> GetTenorResult(IEnumerable<string> queryParams)
         {

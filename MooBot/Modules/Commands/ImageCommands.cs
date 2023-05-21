@@ -18,7 +18,7 @@ namespace Moobot.Modules.Commands
             emojiId = emojiId.Remove(emojiId.Length - 1, 1);
             var emojiUrl = $"https://cdn.discordapp.com/emojis/{emojiId}.png";
             var imagesPath = ApplicationConfiguration.Configuration.GetSection("Directories")["Images"];
-            var emojiFile = await DownloadHandler.DownloadFile(emojiUrl, imagesPath);
+            var emojiFile = await WebHandler.DownloadFile(emojiUrl, imagesPath);
             if (emojiFile == string.Empty)
             {
                 await RespondAsync("Something went wrong with getting the emoji", ephemeral: true);

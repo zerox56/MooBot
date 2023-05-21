@@ -1,3 +1,4 @@
+using System.ComponentModel;
 using System.Reflection;
 using System.Text.RegularExpressions;
 using Discord;
@@ -85,10 +86,13 @@ namespace Moobot.Managers
                 switch (customId)
                 {
                     case "newReminder":
-                        await GuildCommands.CreateReminderFollowUp(modal);
+                        await ReminderCommands.CreateReminderFollowUp(modal);
                         break;
                     case "updateReminder":
-                        await GuildCommands.UpdateReminderFollowUp(modal, customIdNumber);
+                        await ReminderCommands.UpdateReminderFollowUp(modal, customIdNumber);
+                        break;
+                    case "addUpdateReminderGif":
+                        await ReminderCommands.UpdateGifReminderFollowUp(modal, customIdNumber);
                         break;
                     default:
                         Console.WriteLine($"Uncaught case {modal.Data.CustomId} retrieved");
@@ -109,13 +113,19 @@ namespace Moobot.Managers
                 switch (customId)
                 {
                     case "setupReminder":
-                        await GuildCommands.CreateReminder(component);
+                        await ReminderCommands.CreateReminder(component);
                         break;
                     case "updateReminder":
-                        await GuildCommands.UpdateReminder(component, customIdNumber);
+                        await ReminderCommands.UpdateReminder(component, customIdNumber);
                         break;
                     case "viewReminder":
-                        await GuildCommands.GetReminders(component);
+                        await ReminderCommands.GetReminders(component);
+                        break;
+                    case "addUpdateReminderGif":
+                        await ReminderCommands.UpdateGifReminder(component, customIdNumber);
+                        break;
+                    case "deleteReminder":
+                        await ReminderCommands.DeleteReminder(component, customIdNumber);
                         break;
                     default:
                         Console.WriteLine($"Uncaught case {component.Data.CustomId} retrieved");

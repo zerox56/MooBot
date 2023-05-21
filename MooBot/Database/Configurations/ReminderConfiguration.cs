@@ -13,8 +13,9 @@ namespace Moobot.Database.Configurations
             builder.HasOne(r => r.Guild).WithMany(g => g.Reminders).HasForeignKey(g => g.GuildId);
             builder.Property(r => r.Title).IsRequired();
             builder.Property(r => r.Description).HasDefaultValue("");
-            builder.Property(r => r.Cron).IsRequired();
-            builder.Property(r => r.TimeZone).IsRequired();
+            builder.Property(r => r.Time).IsRequired();
+            builder.Property(r => r.Periodicity).IsRequired();
+            builder.Property(r => r.DayOfWeek).HasDefaultValue(DayOfWeek.Sunday);
             builder.Property(r => r.GifTag).HasDefaultValue("");
 
             base.Configure(builder);

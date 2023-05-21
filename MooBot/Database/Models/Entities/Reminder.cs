@@ -1,3 +1,4 @@
+using MooBot.Utils;
 using System.ComponentModel.DataAnnotations.Schema;
 
 namespace Moobot.Database.Models.Entities
@@ -23,11 +24,14 @@ namespace Moobot.Database.Models.Entities
         [Column("description")]
         public string Description { get; set; }
 
-        [Column("cron")]
-        public string Cron { get; set; }
+        [Column("time")]
+        public string Time { get; set; }
 
-        [Column("time_zone")]
-        public string TimeZone { get; set; }
+        [Column("periodicity")]
+        public PeriodicityEnum Periodicity { get; set; }
+
+        [Column("day_of_week")]
+        public DayOfWeek DayOfWeek { get; set; }
 
         [Column("user_reminders")]
         public ICollection<UserReminder> UserReminders { get; set; }

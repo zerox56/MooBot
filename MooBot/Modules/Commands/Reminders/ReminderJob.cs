@@ -2,6 +2,7 @@ using Discord;
 using Discord.WebSocket;
 using Moobot.Database.Models.Entities;
 using Moobot.Managers;
+using Moobot.Modules.Handlers;
 using Quartz;
 
 namespace Moobot.Modules.Commands.Reminders
@@ -21,6 +22,12 @@ namespace Moobot.Modules.Commands.Reminders
                 Title = reminder.Title,
                 Description = reminder.Description
             };
+
+            if (reminder.GifTag != "")
+            {
+                //TODO: Add option to change randomness of gif
+                embed.ImageUrl = await WebHandler.GetRandomGif(reminder.GifTag, 3);
+            }
 
             await channel.SendMessageAsync(embed: embed.Build());
             await Task.CompletedTask;

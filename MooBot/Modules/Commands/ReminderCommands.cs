@@ -236,7 +236,7 @@ namespace Moobot.Modules.Commands
 
             dbContext.SaveChanges();
             await ReminderManager.UpdateReminder(reminderSet, reminderSet.Title);
-            await modal.RespondAsync($"Gif has been changed for the reminder {reminder.Title}!");
+            await modal.RespondAsync($"Gif has been changed for the reminder {reminderSet.Title}!");
         }
 
         public static async Task DeleteReminder(SocketInteraction interaction, int reminderNum = -1)

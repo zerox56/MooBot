@@ -85,13 +85,13 @@ namespace Moobot.Modules.Commands
         {
             if (modal.GuildId == null)
             {
-                await modal.RespondAsync("Something went wrong");
+                await modal.RespondAsync("Something went wrong", ephemeral: true);
                 return;
             }
 
             if (!Enum.TryParse(modal.Data.Components.First(d => d.CustomId == "reminderPeriodicity").Value.Trim(), out PeriodicityEnum periodicity))
             {
-                await modal.RespondAsync("Didn't select a valid periodicity");
+                await modal.RespondAsync("Didn't select a valid periodicity", ephemeral: true);
                 return;
             }
 
@@ -101,7 +101,7 @@ namespace Moobot.Modules.Commands
             {
                 if (!Enum.TryParse(rawDayOfWeek, out dayOfWeek))
                 {
-                    await modal.RespondAsync("Didn't select a valid day of the week");
+                    await modal.RespondAsync("Didn't select a valid day of the week", ephemeral: true);
                     return;
                 }
             }
@@ -123,11 +123,11 @@ namespace Moobot.Modules.Commands
             if (reminderSet != null)
             {
                 await ReminderManager.AddReminder(reminder);
-                await modal.RespondAsync("Created the reminder in this channel!");
+                await modal.RespondAsync($"Created the reminder {reminder.Title} in this channel!");
             }
             else
             {
-                await modal.RespondAsync("Something went wrong creating the reminder");
+                await modal.RespondAsync("Something went wrong creating the reminder", ephemeral: true);
             }
         }
 
@@ -159,13 +159,13 @@ namespace Moobot.Modules.Commands
         {
             if (modal.GuildId == null)
             {
-                await modal.RespondAsync("Something went wrong");
+                await modal.RespondAsync("Something went wrong", ephemeral: true);
                 return;
             }
 
             if (!Enum.TryParse(modal.Data.Components.First(d => d.CustomId == "reminderPeriodicity").Value.Trim(), out PeriodicityEnum periodicity))
             {
-                await modal.RespondAsync("Didn't select a valid periodicity");
+                await modal.RespondAsync("Didn't select a valid periodicity", ephemeral: true);
                 return;
             }
 
@@ -175,7 +175,7 @@ namespace Moobot.Modules.Commands
             {
                 if (!Enum.TryParse(rawDayOfWeek, out dayOfWeek))
                 {
-                    await modal.RespondAsync("Didn't select a valid day of the week");
+                    await modal.RespondAsync("Didn't select a valid day of the week", ephemeral: true);
                     return;
                 }
             }
@@ -198,14 +198,14 @@ namespace Moobot.Modules.Commands
 
             dbContext.SaveChanges();
             await ReminderManager.UpdateReminder(reminderSet, oldTitle);
-            await modal.RespondAsync("Reminder has been updated!", ephemeral: true);
+            await modal.RespondAsync($"Reminder {reminder.Title} has been updated!");
         }
 
         public static async Task UpdateGifReminder(SocketInteraction interaction, int reminderNum = -1)
         {
             if (interaction.GuildId == null)
             {
-                await interaction.RespondAsync("Something went wrong");
+                await interaction.RespondAsync("Something went wrong", ephemeral: true);
                 return;
             }
 
@@ -225,7 +225,7 @@ namespace Moobot.Modules.Commands
         {
             if (modal.GuildId == null)
             {
-                await modal.RespondAsync("Something went wrong");
+                await modal.RespondAsync("Something went wrong", ephemeral: true);
                 return;
             }
 
@@ -236,14 +236,14 @@ namespace Moobot.Modules.Commands
 
             dbContext.SaveChanges();
             await ReminderManager.UpdateReminder(reminderSet, reminderSet.Title);
-            await modal.RespondAsync("Gif has been changed for this reminder!", ephemeral: true);
+            await modal.RespondAsync($"Gif has been changed for the reminder {reminder.Title}!");
         }
 
         public static async Task DeleteReminder(SocketInteraction interaction, int reminderNum = -1)
         {
             if (interaction.GuildId == null)
             {
-                await interaction.RespondAsync("Something went wrong");
+                await interaction.RespondAsync("Something went wrong", ephemeral: true);
                 return;
             }
 
@@ -281,7 +281,7 @@ namespace Moobot.Modules.Commands
         {
             if (interaction.GuildId == null)
             {
-                await interaction.RespondAsync("Something went wrong");
+                await interaction.RespondAsync("Something went wrong", ephemeral: true);
                 return;
             }
             var dbContext = ServiceManager.GetService<DatabaseContext>();
@@ -309,7 +309,7 @@ namespace Moobot.Modules.Commands
                 }
                 else
                 {
-                    remindersMessage += $"\"{reminder.Title}\" posted every {reminder.DayOfWeek} at  {reminder.Time}" + Environment.NewLine;
+                    remindersMessage += $"\"{reminder.Title}\" posted every {reminder.DayOfWeek} at {reminder.Time}" + Environment.NewLine;
                 }
             }
             await interaction.RespondAsync(remindersMessage);
@@ -319,7 +319,7 @@ namespace Moobot.Modules.Commands
         {
             if (interaction.GuildId == null)
             {
-                await interaction.RespondAsync("Something went wrong");
+                await interaction.RespondAsync("Something went wrong", ephemeral: true);
                 return;
             }
 
@@ -351,7 +351,7 @@ namespace Moobot.Modules.Commands
             List<Reminder> reminders = remindersCollection.ToList();
             if (reminders.Count == 0)
             {
-                await interaction.RespondAsync("There are no reminders on this channel");
+                await interaction.RespondAsync("There are no reminders on this channel", ephemeral: true);
                 return null;
             }
             if (reminderNum != -1)

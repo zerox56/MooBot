@@ -32,7 +32,7 @@ namespace Moobot.Modules.Commands
 
             if (guildSet.GlobalLink == "")
             {
-                await RespondAsync("No link setup on this server, make sure to run /setlink first");
+                await RespondAsync("No link setup on this server, make sure to run /set-link first");
                 return;
             }
 
@@ -77,7 +77,7 @@ namespace Moobot.Modules.Commands
 
                 channelSet.Link = url;
                 dbContext.SaveChanges();
-                await RespondAsync("The link has been set on this channel", ephemeral: true);
+                await RespondAsync($"The link {url} has been set on this channel");
 
                 return;
             }

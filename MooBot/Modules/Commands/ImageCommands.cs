@@ -60,8 +60,11 @@ namespace Moobot.Modules.Commands
             Mat tinted8Bit = new Mat();
             tintImage.ConvertTo(tinted8Bit, MatType.CV_8UC3, 255.0);
 
-            Cv2.ImWrite($"{Path.Combine(imagesPath, emojiId)}.png", tinted8Bit);
-            await RespondWithFileAsync($"{Path.Combine(imagesPath, emojiId)}.png");
+            var imagePath = $"{Path.Combine(imagesPath, emojiId)}.png";
+            Cv2.ImWrite(imagePath, tinted8Bit);
+            await RespondWithFileAsync(imagePath);
+
+            File.Delete(imagePath);
         }
     }
 }

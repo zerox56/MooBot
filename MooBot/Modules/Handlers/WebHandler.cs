@@ -62,7 +62,7 @@ namespace Moobot.Modules.Handlers
                     response = await GetTenorResult(encodedQueryStringParams);
                 }
 
-                int randomGifIndex = randomizer.Next(0, response.Results.Length-1);
+                int randomGifIndex = randomizer.Next(0, response.Results.Length);
 
                 return response.Results[randomGifIndex].Media[0].FirstOrDefault(m => m.Key == "gif").Value.Url;
             }

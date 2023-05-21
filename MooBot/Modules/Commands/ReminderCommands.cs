@@ -5,6 +5,7 @@ using Moobot.Database;
 using Moobot.Database.Models.Entities;
 using Moobot.Database.Queries;
 using Moobot.Managers;
+using MooBot.Configuration;
 using MooBot.Database.Queries;
 using MooBot.Modules.Commands.Reminders;
 using MooBot.Utils;
@@ -20,6 +21,13 @@ namespace Moobot.Modules.Commands
             if (guild == null)
             {
                 await RespondAsync("This is command is not ment for here");
+                return;
+            }
+
+            // TODO: Set default permissions to guild owner and invitee user
+            if (Context.User.Id.ToString() != ApplicationConfiguration.Configuration.GetSection("Discord")["BotOwnerId"])
+            {
+                await RespondAsync("You don't have permissions to use this command here", ephemeral: true);
                 return;
             }
 

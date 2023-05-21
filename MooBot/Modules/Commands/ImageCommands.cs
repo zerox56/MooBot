@@ -14,11 +14,19 @@ namespace Moobot.Modules.Commands
         {
             var emojiId = string.Empty;
             var emojiUrl = string.Empty;
+            var emojiExtension = ".png";
             if (emoji.Contains(":"))
             {
                 emojiId = emoji.Split(':')[2];
                 emojiId = emojiId.Remove(emojiId.Length - 1, 1);
-                emojiUrl = $"https://cdn.discordapp.com/emojis/{emojiId}.png";
+
+                emojiExtension = emoji.Split(':')[0].Contains('a') ? ".gif" : emojiExtension;
+                if (emojiExtension == ".gif")
+                {
+                    await RespondAsync("Animated emojis aren't supported yet", ephemeral: true);
+                    return;
+                }
+                emojiUrl = $"https://cdn.discordapp.com/emojis/{emojiId}{emojiExtension}";
             } 
             else
             {
@@ -60,7 +68,7 @@ namespace Moobot.Modules.Commands
             Mat tinted8Bit = new Mat();
             tintImage.ConvertTo(tinted8Bit, MatType.CV_8UC3, 255.0);
 
-            var imagePath = $"{Path.Combine(imagesPath, emojiId)}.png";
+            var imagePath = $"{Path.Combine(imagesPath, emojiId)}{emojiExtension}";
             Cv2.ImWrite(imagePath, tinted8Bit);
             await RespondWithFileAsync(imagePath);
 

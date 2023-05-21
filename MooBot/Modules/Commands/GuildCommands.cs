@@ -1,12 +1,9 @@
-using Discord;
 using Discord.Interactions;
-using Discord.WebSocket;
-using dotenv.net;
 using Moobot.Database;
 using Moobot.Database.Models.Entities;
 using Moobot.Database.Queries;
 using Moobot.Managers;
-using Moobot.Modules.Handlers;
+using MooBot.Configuration;
 
 namespace Moobot.Modules.Commands
 {
@@ -42,8 +39,8 @@ namespace Moobot.Modules.Commands
             await RespondAsync(guildSet.GlobalLink);
         }
 
-        [SlashCommand("setlink", "Sets the channel or global link")]
-        public async Task SetLink(string url, string currentChannel = "false")
+        [SlashCommand("set-link", "Sets the channel or global link")]
+        public async Task SetLink(string url)
         {
             try
             {
@@ -55,7 +52,7 @@ namespace Moobot.Modules.Commands
                 }
 
                 // TODO: Set default permissions to guild owner and invitee user
-                if (Context.User.Id.ToString() != DotEnv.Read()["BOT_OWNER"])
+                if (Context.User.Id.ToString() != ApplicationConfiguration.Configuration.GetSection("Discord")["BotOwnerId"])
                 {
                     await RespondAsync("You don't have permissions to use this command here", ephemeral: true);
                     return;
@@ -71,25 +68,16 @@ namespace Moobot.Modules.Commands
 
                 var guildSet = await dbContext.Guild.GetGuildById(guild.Id, true);
 
-                if (bool.Parse(currentChannel))
+                var channel = Context.Channel;
+                var channelSet = await dbContext.Channel.GetChannelById(channel.Id);
+                if (channelSet == null)
                 {
-                    var channel = Context.Channel;
-                    var channelSet = await dbContext.Channel.GetChannelById(channel.Id);
-                    if (channelSet == null)
-                    {
-                        channelSet = await dbContext.Channel.CreateChannelById(channel.Id, guild.Id);
-                    }
+                    channelSet = await dbContext.Channel.CreateChannelById(channel.Id, guild.Id);
+                }
 
-                    channelSet.Link = url;
-                    dbContext.SaveChanges();
-                    await RespondAsync("The link has been set on this channel", ephemeral: true);
-                }
-                else
-                {
-                    guildSet.Link = url;
-                    dbContext.SaveChanges();
-                    await RespondAsync("The link has been set on the whole server", ephemeral: true);
-                }
+                channelSet.Link = url;
+                dbContext.SaveChanges();
+                await RespondAsync("The link has been set on this channel", ephemeral: true);
 
                 return;
             }

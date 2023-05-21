@@ -1,11 +1,9 @@
 using System.Drawing;
 using Discord.Interactions;
-using Microsoft.Extensions.Configuration;
-using Moobot.Database.Models.Entities;
-using Moobot.Managers;
 using Moobot.Modules.Handlers;
 using MooBot.Configuration;
 using OpenCvSharp;
+using TwemojiSharp;
 
 namespace Moobot.Modules.Commands
 {
@@ -14,9 +12,21 @@ namespace Moobot.Modules.Commands
         [SlashCommand("mood", "Will change emoji to select color")]
         public async Task ChangeEmojiColor(string emoji, string color)
         {
-            var emojiId = emoji.Split(':')[2];
-            emojiId = emojiId.Remove(emojiId.Length - 1, 1);
-            var emojiUrl = $"https://cdn.discordapp.com/emojis/{emojiId}.png";
+            var emojiId = string.Empty;
+            var emojiUrl = string.Empty;
+            if (emoji.Contains(":"))
+            {
+                emojiId = emoji.Split(':')[2];
+                emojiId = emojiId.Remove(emojiId.Length - 1, 1);
+                emojiUrl = $"https://cdn.discordapp.com/emojis/{emojiId}.png";
+            } 
+            else
+            {
+                var twemoji = new TwemojiLib();
+                emojiUrl = twemoji.ParseToList(emoji)[0].Src;
+                emojiId = Path.GetFileNameWithoutExtension(emojiUrl);
+            }
+
             var imagesPath = ApplicationConfiguration.Configuration.GetSection("Directories")["Images"];
             var emojiFile = await WebHandler.DownloadFile(emojiUrl, imagesPath);
             if (emojiFile == string.Empty)

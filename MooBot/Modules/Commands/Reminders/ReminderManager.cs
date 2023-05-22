@@ -1,4 +1,4 @@
-﻿using Moobot.Database.Models.Entities;
+using Moobot.Database.Models.Entities;
 using Moobot.Database;
 using Moobot.Managers;
 using Moobot.Database.Queries;
@@ -90,9 +90,9 @@ namespace MooBot.Modules.Commands.Reminders
             DateTime targetTime = new DateTime(now.Year, now.Month, now.Day, hour, minute, 0);
             targetTime.AddDays(daysToAdd);
 
-            if (targetTime > now)
+            if (targetTime <= now)
             {
-                targetTime.AddDays(7);
+                targetTime = targetTime.AddDays(7);
             }
             return targetTime - now;
         }

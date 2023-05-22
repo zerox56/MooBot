@@ -9,6 +9,7 @@ using MooBot.Configuration;
 using MooBot.Database.Queries;
 using MooBot.Modules.Commands.Reminders;
 using MooBot.Utils;
+using System;
 
 namespace Moobot.Modules.Commands
 {
@@ -75,15 +76,7 @@ namespace Moobot.Modules.Commands
         {
             try
             {
-                var modal = new ModalBuilder()
-                    .WithTitle("Set reminder")
-                    .WithCustomId("newReminder")
-                    .AddTextInput("Title", "reminderTitle", placeholder: "Daily reset", required: true)
-                    .AddTextInput("Description", "reminderDescription", TextInputStyle.Paragraph, "This is a daily reset", required: false)
-                    .AddTextInput("Time (UTC)", "reminderTime", placeholder: "18:00", required: true)
-                    .AddTextInput("Periodicity", "reminderPeriodicity", placeholder: "Daily or Weekly", required: true)
-                    .AddTextInput("Day of the Week", "reminderDayOfWeek", placeholder: "Saturday", required: false);
-
+                var modal = await GetReminderModal("Set reminder", "newReminder");
                 await interaction.RespondWithModalAsync(modal.Build());
             }
             catch (Exception e) { Console.WriteLine(e); }
@@ -114,10 +107,14 @@ namespace Moobot.Modules.Commands
                 }
             }
 
+            var dbContext = ServiceManager.GetService<DatabaseContext>();
+
+            Guild guild = await dbContext.Guild.GetGuildById(modal.GuildId.Value, true);
+            Channel channel = await dbContext.Channel.GetChannelById(modal.Channel.Id, guild.Id, true);
             var reminder = new Reminder
             {
-                ChannelId = modal.Channel.Id,
-                GuildId = modal.GuildId.Value,
+                ChannelId = channel.Id,
+                GuildId = guild.Id,
                 Title = modal.Data.Components.First(d => d.CustomId == "reminderTitle").Value.Trim(),
                 Description = modal.Data.Components.First(d => d.CustomId == "reminderDescription").Value.Trim(),
                 Time = modal.Data.Components.First(d => d.CustomId == "reminderTime").Value.Trim(),
@@ -126,7 +123,6 @@ namespace Moobot.Modules.Commands
                 GifTag = string.Empty
             };
 
-            var dbContext = ServiceManager.GetService<DatabaseContext>();
             var reminderSet = await dbContext.Reminder.CreateReminder(reminder);
             if (reminderSet != null)
             {
@@ -147,19 +143,11 @@ namespace Moobot.Modules.Commands
                 return;
             }
 
-            Reminder reminder = await SelectReminder(interaction, reminderNum);
+            Reminder reminder = await SelectReminder(interaction, "updateReminder", reminderNum);
             if (reminder == null)
                 return;
 
-            var modal = new ModalBuilder()
-                .WithTitle("Update reminder")
-                .WithCustomId("updateReminder" + reminder.Id)
-                .AddTextInput("Title", "reminderTitle", value: reminder.Title, required: true)
-                .AddTextInput("Description", "reminderDescription", TextInputStyle.Paragraph, value: reminder.Description, required: false)
-                .AddTextInput("Time (UTC)", "reminderTime", placeholder: "18:00", required: false)
-                .AddTextInput("Periodicity", "reminderPeriodicity", placeholder: "Daily or Weekly", required: true)
-                .AddTextInput("Day of the Week", "reminderDayOfWeek", placeholder: "Saturday", required: false);
-
+            var modal = await GetReminderModal("Update reminder", $"updateReminder{reminder.Id}", reminder);
             await interaction.RespondWithModalAsync(modal.Build());
         }
 
@@ -190,22 +178,17 @@ namespace Moobot.Modules.Commands
 
             var dbContext = ServiceManager.GetService<DatabaseContext>();
 
-            Reminder reminderSet = await dbContext.Reminder.GetReminderById(reminderId);
-            var oldTitle = reminderSet.Title;
+            Reminder reminder = await dbContext.Reminder.GetReminderById(reminderId);
+            var oldTitle = reminder.Title;
 
-            var reminder = new Reminder
-            {
-                ChannelId = modal.Channel.Id,
-                GuildId = modal.GuildId.Value,
-                Title = modal.Data.Components.First(d => d.CustomId == "reminderTitle").Value.Trim(),
-                Description = modal.Data.Components.First(d => d.CustomId == "reminderDescription").Value.Trim(),
-                Time = modal.Data.Components.First(d => d.CustomId == "reminderTime").Value.Trim(),
-                Periodicity = periodicity.ToString(),
-                DayOfWeek = dayOfWeek.ToString()
-            };
+            reminder.Title = modal.Data.Components.First(d => d.CustomId == "reminderTitle").Value.Trim();
+            reminder.Description = modal.Data.Components.First(d => d.CustomId == "reminderDescription").Value.Trim();
+            reminder.Time = modal.Data.Components.First(d => d.CustomId == "reminderTime").Value.Trim();
+            reminder.Periodicity = periodicity.ToString();
+            reminder.DayOfWeek = dayOfWeek.ToString();
 
             dbContext.SaveChanges();
-            await ReminderManager.UpdateReminder(reminderSet, oldTitle);
+            await ReminderManager.UpdateReminder(reminder, oldTitle);
             await modal.RespondAsync($"Reminder {reminder.Title} has been updated!");
         }
 
@@ -217,14 +200,14 @@ namespace Moobot.Modules.Commands
                 return;
             }
 
-            Reminder reminder = await SelectReminder(interaction, reminderNum);
+            Reminder reminder = await SelectReminder(interaction, "addUpdateReminderGif", reminderNum);
             if (reminder == null)
                 return;
 
             var modal = new ModalBuilder()
                 .WithTitle("Change reminder gif")
                 .WithCustomId("addUpdateReminderGif" + reminder.Id)
-                .AddTextInput("gif tag", "reminderGif", placeholder: "reset", required: true);
+                .AddTextInput("gif tag", "reminderGif", placeholder: "reset", required: true, value: reminder.GifTag);
 
             await interaction.RespondWithModalAsync(modal.Build());
         }
@@ -239,12 +222,12 @@ namespace Moobot.Modules.Commands
 
             var dbContext = ServiceManager.GetService<DatabaseContext>();
 
-            Reminder reminderSet = await dbContext.Reminder.GetReminderById(reminderId);
-            reminderSet.GifTag = modal.Data.Components.First(d => d.CustomId == "reminderGif").Value;
+            Reminder reminder = await dbContext.Reminder.GetReminderById(reminderId);
+            reminder.GifTag = modal.Data.Components.First(d => d.CustomId == "reminderGif").Value;
 
             dbContext.SaveChanges();
-            await ReminderManager.UpdateReminder(reminderSet, reminderSet.Title);
-            await modal.RespondAsync($"Gif has been changed for the reminder {reminderSet.Title}!");
+            await ReminderManager.UpdateReminder(reminder, reminder.Title);
+            await modal.RespondAsync($"Gif has been changed for the reminder {reminder.Title}!");
         }
 
         public static async Task DeleteReminder(SocketInteraction interaction, int reminderNum = -1)
@@ -255,34 +238,15 @@ namespace Moobot.Modules.Commands
                 return;
             }
 
-            var dbContext = ServiceManager.GetService<DatabaseContext>();
-            ICollection<Reminder> remindersCollection = await dbContext.Channel.GetReminders(interaction.Channel.Id);
-            List<Reminder> reminders = remindersCollection.ToList();
-            if (reminders.Count == 0)
-            {
-                await interaction.RespondAsync("There are no reminders on this channel");
+            Reminder reminder = await SelectReminder(interaction, "deleteReminder", reminderNum);
+            if (reminder == null)
                 return;
-            }
-            if (reminders.Count > 1 && reminderNum != -1)
-            {
-                var component = new ComponentBuilder();
-                for (int reminderId = 0; reminderId < reminders.Count; reminderId++)
-                {
-                    Reminder reminder = reminders[reminderId];
-                    component.WithButton(label: reminder.Title, customId: "deleteReminder" + reminderId, row: reminderId);
-                }
-                await interaction.RespondAsync(text: "Choose a reminder to delete from this channel", components: component.Build(), ephemeral: true);
-            }
-            else
-            {
-                reminderNum = 0;
-            }
 
-            Reminder reminderToDelete = reminders[reminderNum];
-            dbContext.Reminder.Remove(reminders[reminderNum]);
+            var dbContext = ServiceManager.GetService<DatabaseContext>();
+            dbContext.Reminder.Remove(reminder);
             dbContext.SaveChanges();
 
-            await interaction.RespondAsync(text: $"Removed {reminderToDelete.Title} reminder from this channel");
+            await interaction.RespondAsync(text: $"Removed {reminder.Title} reminder from this channel");
         }
 
         public static async Task GetReminders(SocketInteraction interaction)
@@ -331,7 +295,7 @@ namespace Moobot.Modules.Commands
                 return;
             }
 
-            Reminder reminder = await SelectReminder(interaction, reminderNum);
+            Reminder reminder = await SelectReminder(interaction, "changeUserStatusReminder", reminderNum);
             if (reminder == null)
                 return;
 
@@ -352,10 +316,10 @@ namespace Moobot.Modules.Commands
             await interaction.RespondAsync(text: action, ephemeral: true);
         }
 
-        private static async Task<Reminder> SelectReminder(SocketInteraction interaction, int reminderNum)
+        private static async Task<Reminder> SelectReminder(SocketInteraction interaction, string customId, int reminderNum)
         {
             var dbContext = ServiceManager.GetService<DatabaseContext>();
-            ICollection<Reminder> remindersCollection = await dbContext.Channel.GetReminders(interaction.Channel.Id);
+            ICollection<Reminder> remindersCollection = await dbContext.Channel.GetReminders(interaction.Channel.Id, interaction.GuildId.Value);
             List<Reminder> reminders = remindersCollection.ToList();
             if (reminders.Count == 0)
             {
@@ -372,13 +336,56 @@ namespace Moobot.Modules.Commands
                 for (int reminderId = 0; reminderId < reminders.Count; reminderId++)
                 {
                     Reminder reminder = reminders[reminderId];
-                    component.WithButton(label: reminder.Title, customId: "updateReminder" + reminderId, row: reminderId);
+                    component.WithButton(label: reminder.Title, customId: customId + reminderId, row: reminderId);
                 }
                 await interaction.RespondAsync(text: "Choose a reminder to update", components: component.Build(), ephemeral: true);
                 return null;
             }
 
             return reminders[0];
+        }
+
+        private static async Task<ModalBuilder> GetReminderModal(string title, string customId, Reminder reminder = null)
+        {
+            return new ModalBuilder()
+                .WithTitle(title)
+                .WithCustomId(customId)
+                .AddTextInput(
+                    "Title", 
+                    "reminderTitle", 
+                    placeholder: "Daily reset", 
+                    required: true, 
+                    value: reminder != null ? reminder.Title : string.Empty 
+                )
+                .AddTextInput(
+                    "Description", 
+                    "reminderDescription", 
+                    TextInputStyle.Paragraph, 
+                    "This is a daily reset", 
+                    required: false, 
+                    value: reminder != null ? reminder.Description : string.Empty
+                )
+                .AddTextInput(
+                    "Time (UTC)", 
+                    "reminderTime", 
+                    placeholder: "18:00", 
+                    required: true,
+                    value: reminder != null ? reminder.Time : string.Empty
+                )
+                .AddTextInput(
+                    "Periodicity", 
+                    "reminderPeriodicity", 
+                    placeholder: "Daily or Weekly", 
+                    required: true,
+                    value: reminder != null ? reminder.Periodicity : string.Empty
+                )
+                .AddTextInput(
+                    "Day of the Week", 
+                    "reminderDayOfWeek", 
+                    placeholder: "Saturday", 
+                    required: false,
+                    value: reminder != null ? reminder.DayOfWeek : string.Empty
+                );
         }
     }
 }

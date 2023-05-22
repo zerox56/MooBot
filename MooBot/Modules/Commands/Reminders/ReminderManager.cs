@@ -1,4 +1,4 @@
-using Moobot.Database.Models.Entities;
+﻿using Moobot.Database.Models.Entities;
 using Moobot.Database;
 using Moobot.Managers;
 using Moobot.Database.Queries;
@@ -6,8 +6,6 @@ using MooBot.Utils;
 using Discord.WebSocket;
 using Discord;
 using Moobot.Modules.Handlers;
-using Microsoft.EntityFrameworkCore;
-using Microsoft.VisualBasic;
 
 namespace MooBot.Modules.Commands.Reminders
 {
@@ -46,6 +44,7 @@ namespace MooBot.Modules.Commands.Reminders
 
         private static async Task CreatScheduleJob(Reminder reminder)
         {
+            //TODO: Fix crash when multiple timers are being triggered at the same time
             var splitTime = reminder.Time.Split(':');
             DateTime now = DateTime.UtcNow;
             if ((PeriodicityEnum)Enum.Parse(typeof(PeriodicityEnum), reminder.Periodicity) == PeriodicityEnum.Daily)

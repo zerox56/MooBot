@@ -6,21 +6,18 @@ namespace Moobot.Database.Queries
 {
     public static class ChannelQuery
     {
-        public static async Task<dynamic> GetChannelById(this DbSet<Channel> channelSet, ulong channelId)
+        public static async Task<dynamic> GetChannelById(this DbSet<Channel> channelSet, ulong channelId, ulong guildId, bool createIfNotExists = false)
         {
-            // TODO: Check if needed to check if channel is actually part of the Guild
-            Channel channel = await channelSet.Where(c => c.Id == channelId).FirstOrDefaultAsync();
-            var dbContext = ServiceManager.GetService<DatabaseContext>();
+            Channel channel = await channelSet.Where(c => c.Id == channelId && c.GuildId == guildId).FirstOrDefaultAsync();
 
-            if (channel != default(Channel))
+            if (channel != default(Channel) || !createIfNotExists)
             {
+                var dbContext = ServiceManager.GetService<DatabaseContext>();
                 await dbContext.Entry(channel).Collection(c => c.Reminders).LoadAsync();
                 return channel;
             }
-            else
-            {
-                return null;
-            }
+
+            return await CreateChannelById(channelSet, channelId, guildId);
         }
 
         public static async Task<dynamic> CreateChannelById(this DbSet<Channel> channelSet, ulong channelId, ulong guildId)
@@ -34,9 +31,9 @@ namespace Moobot.Database.Queries
             return await channelSet.Where(c => c.Id == channelId).FirstOrDefaultAsync();
         }
 
-        public static async Task<dynamic> GetReminders(this DbSet<Channel> channelSet, ulong channelId)
+        public static async Task<dynamic> GetReminders(this DbSet<Channel> channelSet, ulong channelId, ulong guildId)
         {
-            Channel channel = await GetChannelById(channelSet, channelId);
+            Channel channel = await GetChannelById(channelSet, channelId, guildId);
             return channel.Reminders;
         }
     }

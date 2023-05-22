@@ -12,31 +12,29 @@ namespace Moobot.Modules.Commands
         [SlashCommand("link", "Gets the channel or global link")]
         public async Task GetLink()
         {
-            var guild = Context.Guild;
-            if (guild == null)
+            if (Context.Guild == null)
             {
                 await RespondAsync("This is command is not ment for here");
                 return;
             }
 
             var dbContext = ServiceManager.GetService<DatabaseContext>();
+            Guild guild = await dbContext.Guild.GetGuildById(Context.Guild.Id, true);
 
-            Guild guildSet = await dbContext.Guild.GetGuildById(guild.Id);
-
-            if (guildSet.Channels.Count > 0 && guildSet.Channels.AsEnumerable().FirstOrDefault(c => c.Id == Context.Channel.Id) != null)
+            if (guild.Channels.Count > 0 && guild.Channels.AsEnumerable().FirstOrDefault(c => c.Id == Context.Channel.Id) != null)
             {
-                var channelSet = await dbContext.Channel.GetChannelById(Context.Channel.Id);
+                var channelSet = await dbContext.Channel.GetChannelById(Context.Channel.Id, Context.Guild.Id);
                 await RespondAsync(channelSet.Link);
                 return;
             }
 
-            if (guildSet.GlobalLink == "")
+            if (guild.GlobalLink == "")
             {
                 await RespondAsync("No link setup on this server, make sure to run /set-link first");
                 return;
             }
 
-            await RespondAsync(guildSet.GlobalLink);
+            await RespondAsync(guild.GlobalLink);
         }
 
         [SlashCommand("set-link", "Sets the channel or global link")]
@@ -44,8 +42,7 @@ namespace Moobot.Modules.Commands
         {
             try
             {
-                var guild = Context.Guild;
-                if (guild == null)
+                if (Context.Guild == null)
                 {
                     await RespondAsync("This is command is not ment for here");
                     return;
@@ -65,17 +62,10 @@ namespace Moobot.Modules.Commands
                 }
 
                 var dbContext = ServiceManager.GetService<DatabaseContext>();
+                Guild guild = await dbContext.Guild.GetGuildById(Context.Guild.Id, true);
+                Channel channel = await dbContext.Channel.GetChannelById(Context.Channel.Id, guild.Id, true);
 
-                var guildSet = await dbContext.Guild.GetGuildById(guild.Id, true);
-
-                var channel = Context.Channel;
-                var channelSet = await dbContext.Channel.GetChannelById(channel.Id);
-                if (channelSet == null)
-                {
-                    channelSet = await dbContext.Channel.CreateChannelById(channel.Id, guild.Id);
-                }
-
-                channelSet.Link = url;
+                channel.Link = url;
                 dbContext.SaveChanges();
                 await RespondAsync($"The link {url} has been set on this channel");
 

@@ -1,4 +1,3 @@
-using System.ComponentModel;
 using System.Reflection;
 using System.Text.RegularExpressions;
 using Discord;
@@ -76,12 +75,16 @@ namespace Moobot.Managers
             _ = Task.Run(async () =>
             {
                 string customId = modal.Data.CustomId;
-                ulong customIdNumber;
-                var split = Regex.Split(customId, @"\D+");
-                string numberInId = split[1];
-                ulong.TryParse(numberInId, out customIdNumber);
+                ulong customIdNumber = ulong.MinValue;
 
-                customId = Regex.Replace(customId, @"[\d-]", string.Empty);
+                string pattern = @"\d+$";
+                Match match = Regex.Match(customId, pattern);
+                if (match.Success)
+                {
+                    string numberString = match.Value;
+                    customIdNumber = ulong.Parse(numberString);
+                    customId = customId.Substring(0, match.Index).Trim();
+                }
 
                 switch (customId)
                 {
@@ -108,7 +111,15 @@ namespace Moobot.Managers
             {
                 string customId = component.Data.CustomId;
                 int customIdNumber = -1;
-                Int32.TryParse(customId.TrimEnd(new[] { '0', '1', '2', '3', '4', '5', '6', '7', '8', '9' }), out customIdNumber);
+
+                string pattern = @"\d+$";
+                Match match = Regex.Match(customId, pattern);
+                if (match.Success)
+                {
+                    string numberString = match.Value;
+                    customIdNumber = int.Parse(numberString);
+                    customId = customId.Substring(0, match.Index).Trim();
+                }
 
                 switch (customId)
                 {

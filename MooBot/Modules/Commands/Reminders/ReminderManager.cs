@@ -6,8 +6,6 @@ using MooBot.Utils;
 using Discord.WebSocket;
 using Discord;
 using Moobot.Modules.Handlers;
-using Microsoft.EntityFrameworkCore;
-using Microsoft.VisualBasic;
 
 namespace MooBot.Modules.Commands.Reminders
 {
@@ -46,6 +44,7 @@ namespace MooBot.Modules.Commands.Reminders
 
         private static async Task CreatScheduleJob(Reminder reminder)
         {
+            //TODO: Fix crash when multiple timers are being triggered at the same time
             var splitTime = reminder.Time.Split(':');
             DateTime now = DateTime.UtcNow;
             if ((PeriodicityEnum)Enum.Parse(typeof(PeriodicityEnum), reminder.Periodicity) == PeriodicityEnum.Daily)
@@ -90,9 +89,9 @@ namespace MooBot.Modules.Commands.Reminders
             DateTime targetTime = new DateTime(now.Year, now.Month, now.Day, hour, minute, 0);
             targetTime.AddDays(daysToAdd);
 
-            if (targetTime > now)
+            if (targetTime <= now)
             {
-                targetTime.AddDays(7);
+                targetTime = targetTime.AddDays(7);
             }
             return targetTime - now;
         }

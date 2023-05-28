@@ -1,15 +1,16 @@
-using Discord.Interactions;
+﻿using Discord.Interactions;
 using Moobot.Modules.Handlers;
 using MooBot.Configuration;
 using OpenCvSharp;
 using TwemojiSharp;
 using Image = SixLabors.ImageSharp.Image;
 
-namespace Moobot.Modules.Commands
+namespace MooBot.Modules.Commands.ContentManipulation
 {
-    public class ImageCommands : InteractionModuleBase<SocketInteractionContext>
+    [Group("mood", "Change the 'mood' of the content of your choosing")]
+    public class MoodCommands : InteractionModuleBase<SocketInteractionContext>
     {
-        [SlashCommand("mood", "Will change emoji to select color")]
+        [SlashCommand("emoji", "Will change emoji to select color")]
         public async Task ChangeEmojiColor(string emoji, string color)
         {
             string? emojiId;
@@ -25,7 +26,7 @@ namespace Moobot.Modules.Commands
             }
             else
             {
-                var twemoji = new TwemojiLib();;
+                var twemoji = new TwemojiLib(); ;
                 twemoji.ParseToList(emoji);
                 emojiUrl = twemoji.ParseToList(emoji)[0].Src;
                 emojiId = Path.GetFileNameWithoutExtension(emojiUrl);
@@ -48,7 +49,7 @@ namespace Moobot.Modules.Commands
                 await TintAnimatedImage(emojiFile, color, editedImagePath);
                 await RespondWithFileAsync(editedImagePath);
                 File.Delete(editedImagePath);
-            } 
+            }
             else
             {
                 await TintStaticImage(emojiFile, color, imagePath);
@@ -58,7 +59,13 @@ namespace Moobot.Modules.Commands
             File.Delete(imagePath);
         }
 
-        private async Task TintStaticImage(string emojiFile, string colorName, string imagePath) 
+        [SlashCommand("colors", "Will change emoji to select color")]
+        public async Task GetPossibleColors()
+        {
+            await RespondAsync("There's too many colors to give here.\nPlease check the list of possible colors here: https://docs.sixlabors.com/api/ImageSharp/SixLabors.ImageSharp.Color.html");
+        }
+
+        private async Task TintStaticImage(string emojiFile, string colorName, string imagePath)
         {
             var emojiImage = Cv2.ImRead(emojiFile, ImreadModes.Unchanged);
 

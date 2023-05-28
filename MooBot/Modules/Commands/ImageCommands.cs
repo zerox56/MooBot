@@ -1,9 +1,9 @@
-using System.Drawing;
 using Discord.Interactions;
 using Moobot.Modules.Handlers;
 using MooBot.Configuration;
 using OpenCvSharp;
 using TwemojiSharp;
+using Image = SixLabors.ImageSharp.Image;
 
 namespace Moobot.Modules.Commands
 {
@@ -12,8 +12,8 @@ namespace Moobot.Modules.Commands
         [SlashCommand("mood", "Will change emoji to select color")]
         public async Task ChangeEmojiColor(string emoji, string color)
         {
-            var emojiId = string.Empty;
-            var emojiUrl = string.Empty;
+            string? emojiId;
+            string? emojiUrl;
             var emojiExtension = ".png";
             if (emoji.Contains(":"))
             {
@@ -21,16 +21,12 @@ namespace Moobot.Modules.Commands
                 emojiId = emojiId.Remove(emojiId.Length - 1, 1);
 
                 emojiExtension = emoji.Split(':')[0].Contains('a') ? ".gif" : emojiExtension;
-                if (emojiExtension == ".gif")
-                {
-                    await RespondAsync("Animated emojis aren't supported yet", ephemeral: true);
-                    return;
-                }
                 emojiUrl = $"https://cdn.discordapp.com/emojis/{emojiId}{emojiExtension}";
-            } 
+            }
             else
             {
-                var twemoji = new TwemojiLib();
+                var twemoji = new TwemojiLib();;
+                twemoji.ParseToList(emoji);
                 emojiUrl = twemoji.ParseToList(emoji)[0].Src;
                 emojiId = Path.GetFileNameWithoutExtension(emojiUrl);
             }
@@ -43,11 +39,92 @@ namespace Moobot.Modules.Commands
                 return;
             }
 
+            var imagePath = $"{Path.Combine(imagesPath, emojiId)}{emojiExtension}";
+
+            Mat? tintedEmoji;
+            if (emojiExtension == ".gif")
+            {
+                var editedImagePath = Path.Combine(Path.GetDirectoryName(imagePath), Path.GetFileNameWithoutExtension(imagePath)) + "-edited.gif";
+                await TintAnimatedImage(emojiFile, color, editedImagePath);
+                await RespondWithFileAsync(editedImagePath);
+                File.Delete(editedImagePath);
+            } 
+            else
+            {
+                await TintStaticImage(emojiFile, color, imagePath);
+                await RespondWithFileAsync(imagePath);
+            }
+
+            File.Delete(imagePath);
+        }
+
+        private async Task TintStaticImage(string emojiFile, string colorName, string imagePath) 
+        {
             var emojiImage = Cv2.ImRead(emojiFile, ImreadModes.Unchanged);
+
+            var tintedImage = await TintImage(emojiImage, colorName);
+
+            Cv2.ImWrite(imagePath, tintedImage);
+        }
+
+        private async Task TintAnimatedImage(string emojiFile, string colorName, string imagePath)
+        {
+            try
+            {
+                using var emojiImage = Image.Load<Rgba32>(emojiFile);
+
+                var framePaths = new List<string>();
+
+                for (int frameIndex = 0; frameIndex < emojiImage.Frames.Count; frameIndex++)
+                {
+                    using var frame = emojiImage.Frames.CloneFrame(frameIndex);
+                    var framePath = Path.Join(ApplicationConfiguration.Configuration.GetSection("Directories")["Processing"], $"frame_{Path.GetFileNameWithoutExtension(emojiFile)}_{frameIndex}.png");
+                    frame.Save(framePath);
+
+                    await TintStaticImage(framePath, colorName, framePath);
+
+                    framePaths.Add(framePath);
+                }
+
+                var originalMetaData = emojiImage.Frames.RootFrame.Metadata.GetGifMetadata();
+
+                using var tintedEmoji = new Image<Rgba32>(120, 120);
+
+                var gifMetaData = tintedEmoji.Metadata.GetGifMetadata();
+                gifMetaData.RepeatCount = 0;
+
+                var metaData = tintedEmoji.Frames.RootFrame.Metadata.GetGifMetadata();
+                metaData.FrameDelay = originalMetaData.FrameDelay;
+                metaData.DisposalMethod = originalMetaData.DisposalMethod;
+
+                foreach (string framePath in framePaths)
+                {
+                    using var frame = Image.Load<Rgba32>(framePath);
+
+                    metaData = frame.Frames.RootFrame.Metadata.GetGifMetadata();
+                    metaData.FrameDelay = originalMetaData.FrameDelay;
+                    metaData.DisposalMethod = originalMetaData.DisposalMethod;
+
+                    tintedEmoji.Frames.AddFrame(frame.Frames.RootFrame);
+                }
+
+                tintedEmoji.Frames.RemoveFrame(0);
+                tintedEmoji.SaveAsGif(imagePath);
+
+                framePaths.ForEach(f => File.Delete(f));
+            }
+            catch (Exception ex)
+            {
+                Console.WriteLine(ex.Message);
+            }
+        }
+
+        private async Task<Mat> TintImage(Mat emojiImage, string colorName)
+        {
             var tintImage = new Mat();
             emojiImage.ConvertTo(tintImage, MatType.CV_32FC3, 1.0 / 255.0);
 
-            var selectedColor = Color.FromName(color);
+            var selectedColor = System.Drawing.Color.FromName(colorName);
             var tintColor = new Vec3f(selectedColor.B / 255f, selectedColor.G / 255f, selectedColor.R / 255f);
 
             // Get the image dimensions
@@ -67,12 +144,7 @@ namespace Moobot.Modules.Commands
 
             Mat tinted8Bit = new Mat();
             tintImage.ConvertTo(tinted8Bit, MatType.CV_8UC3, 255.0);
-
-            var imagePath = $"{Path.Combine(imagesPath, emojiId)}{emojiExtension}";
-            Cv2.ImWrite(imagePath, tinted8Bit);
-            await RespondWithFileAsync(imagePath);
-
-            File.Delete(imagePath);
+            return tinted8Bit;
         }
     }
 }

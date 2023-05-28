@@ -3,7 +3,6 @@ using Moobot.Modules.Handlers;
 using MooBot.Configuration;
 using OpenCvSharp;
 using TwemojiSharp;
-using Image = SixLabors.ImageSharp.Image;
 
 namespace MooBot.Modules.Commands.ContentManipulation
 {
@@ -13,6 +12,12 @@ namespace MooBot.Modules.Commands.ContentManipulation
         [SlashCommand("emoji", "Will change emoji to select color")]
         public async Task ChangeEmojiColor(string emoji, string color)
         {
+            if (!Color.TryParse(color, out Color tintColor))
+            {
+                await RespondAsync("No valid color provided", ephemeral: true);
+                return;
+            }
+
             string? emojiId;
             string? emojiUrl;
             var emojiExtension = ".png";
@@ -46,13 +51,13 @@ namespace MooBot.Modules.Commands.ContentManipulation
             if (emojiExtension == ".gif")
             {
                 var editedImagePath = Path.Combine(Path.GetDirectoryName(imagePath), Path.GetFileNameWithoutExtension(imagePath)) + "-edited.gif";
-                await TintAnimatedImage(emojiFile, color, editedImagePath);
+                await TintAnimatedImage(emojiFile, tintColor.ToPixel<Rgb24>(), editedImagePath);
                 await RespondWithFileAsync(editedImagePath);
                 File.Delete(editedImagePath);
             }
             else
             {
-                await TintStaticImage(emojiFile, color, imagePath);
+                await TintStaticImage(emojiFile, tintColor.ToPixel<Rgb24>(), imagePath);
                 await RespondWithFileAsync(imagePath);
             }
 
@@ -65,16 +70,16 @@ namespace MooBot.Modules.Commands.ContentManipulation
             await RespondAsync("There's too many colors to give here.\nPlease check the list of possible colors here: https://docs.sixlabors.com/api/ImageSharp/SixLabors.ImageSharp.Color.html");
         }
 
-        private async Task TintStaticImage(string emojiFile, string colorName, string imagePath)
+        private async Task TintStaticImage(string emojiFile, Rgb24 color, string imagePath)
         {
             var emojiImage = Cv2.ImRead(emojiFile, ImreadModes.Unchanged);
 
-            var tintedImage = await TintImage(emojiImage, colorName);
+            var tintedImage = await TintImage(emojiImage, color);
 
             Cv2.ImWrite(imagePath, tintedImage);
         }
 
-        private async Task TintAnimatedImage(string emojiFile, string colorName, string imagePath)
+        private async Task TintAnimatedImage(string emojiFile, Rgb24 color, string imagePath)
         {
             try
             {
@@ -88,7 +93,7 @@ namespace MooBot.Modules.Commands.ContentManipulation
                     var framePath = Path.Join(ApplicationConfiguration.Configuration.GetSection("Directories")["Processing"], $"frame_{Path.GetFileNameWithoutExtension(emojiFile)}_{frameIndex}.png");
                     frame.Save(framePath);
 
-                    await TintStaticImage(framePath, colorName, framePath);
+                    await TintStaticImage(framePath, color, framePath);
 
                     framePaths.Add(framePath);
                 }
@@ -126,13 +131,14 @@ namespace MooBot.Modules.Commands.ContentManipulation
             }
         }
 
-        private async Task<Mat> TintImage(Mat emojiImage, string colorName)
+        private async Task<Mat> TintImage(Mat emojiImage, Rgb24 color)
         {
             var tintImage = new Mat();
             emojiImage.ConvertTo(tintImage, MatType.CV_32FC3, 1.0 / 255.0);
 
-            var selectedColor = System.Drawing.Color.FromName(colorName);
-            var tintColor = new Vec3f(selectedColor.B / 255f, selectedColor.G / 255f, selectedColor.R / 255f);
+            var tintColor = new Vec3f(color.B / 255f, color.G / 255f, color.R / 255f);
+
+            Console.WriteLine(tintColor);
 
             // Get the image dimensions
             int height = tintImage.Height;

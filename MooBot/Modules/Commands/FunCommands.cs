@@ -3,9 +3,6 @@ using Moobot.Modules.Handlers;
 using MooBot.Configuration;
 using MooBot.Modules.Commands.Pokemon;
 using Newtonsoft.Json;
-using Newtonsoft.Json.Linq;
-using System.IO;
-using System.Linq;
 
 namespace Moobot.Modules.Commands
 {

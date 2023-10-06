@@ -1,8 +1,10 @@
+using Discord.Commands;
 using Discord.Interactions;
 using Moobot.Modules.Handlers;
 using MooBot.Configuration;
 using MooBot.Modules.Commands.Pokemon;
 using Newtonsoft.Json;
+using static OpenCvSharp.ML.DTrees;
 
 namespace Moobot.Modules.Commands
 {
@@ -69,6 +71,55 @@ namespace Moobot.Modules.Commands
             }
 
             await RespondWithFileAsync(spriteFilePath);
+        }
+
+        [SlashCommand("fuse-random", "Fuse two random pokemons together")]
+        public async Task FuseRandomPokemon(string basePokemon = "")
+        {
+            var directoriesConfig = ApplicationConfiguration.Configuration.GetSection("Directories");
+            var pokemonJson = Path.Combine(directoriesConfig["BaseDirectory"], "Modules/Commands/Pokemon/PokemonIds.json");
+            var fusionData = JsonConvert.DeserializeObject<PokemonList>(File.ReadAllText(pokemonJson));
+
+            int hasToContainId = -1;
+
+            if (basePokemon != "")
+            {
+                basePokemon = basePokemon.ToLower().Trim();
+                var basePokemonData = await WebHandler.GetPokemonJson($"https://pokeapi.co/api/v2/pokemon/{basePokemon}");
+                if (basePokemon == null)
+                {
+                    await RespondAsync($"{basePokemon} is not a real Pokemon", ephemeral: true);
+                    return;
+                }
+
+                var basePokemonFusionData = fusionData.Pokemons.FirstOrDefault(p => p.Name.ToLower() == basePokemonData.Name.ToLower());
+                if (basePokemonFusionData == null)
+                {
+                    await RespondAsync($"{basePokemonData} does not exist is Pokemon Infinite Fusion", ephemeral: true);
+                    return;
+                }
+
+                hasToContainId = basePokemonFusionData.Id;
+            }
+
+            var rand = new Random();
+            var sprites = Directory.GetFiles(Path.Combine(directoriesConfig["Fusions"], "customs"), "*.png");
+
+            if (hasToContainId != -1)
+            {
+                sprites = sprites
+                    .Where(sprite => Path.GetFileNameWithoutExtension(sprite).StartsWith($"{hasToContainId}.") || Path.GetFileNameWithoutExtension(sprite).Contains($".{hasToContainId}"))
+                    .ToArray();
+            }
+
+            var randomSprite = sprites[rand.Next(sprites.Length)];
+
+            var pokemonIds = Path.GetFileNameWithoutExtension(randomSprite).Split('.');
+
+            var firstPokemon = fusionData.Pokemons.FirstOrDefault(p => p.Id == int.Parse(pokemonIds[0]));
+            var secondPokemon = fusionData.Pokemons.FirstOrDefault(p => p.Id == int.Parse(pokemonIds[1]));
+
+            await RespondWithFileAsync(sprites[rand.Next(sprites.Length)], text: $"{StringUtils.Capitalize(firstPokemon.Name)} + {StringUtils.Capitalize(secondPokemon.Name)}");
         }
 
         [SlashCommand("roll", "Roll a simple or complex dices")]

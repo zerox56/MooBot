@@ -6,5 +6,10 @@ namespace Moobot.Modules.Commands
         {
             return Uri.IsWellFormedUriString(url, UriKind.Absolute);
         }
+
+        public static string Capitalize(string str)
+        {
+            return char.ToUpper(str[0]) + str.Substring(1);
+        }
     }
 }

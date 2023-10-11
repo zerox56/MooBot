@@ -4,7 +4,7 @@ using Moobot.Modules.Handlers;
 using MooBot.Configuration;
 using MooBot.Modules.Commands.Pokemon;
 using Newtonsoft.Json;
-using static OpenCvSharp.ML.DTrees;
+using System.Text.RegularExpressions;
 
 namespace Moobot.Modules.Commands
 {
@@ -20,21 +20,21 @@ namespace Moobot.Modules.Commands
         }
 
         [SlashCommand("fuse", "Fuse two pokemons together")]
-        public async Task FusePokemon(string firstPokemon, string secondPokemon)
+        public async Task FusePokemon(string pokemonHead, string pokemonBody, int variantType = -1)
         {
-            firstPokemon = firstPokemon.ToLower().Trim();
-            var firstPokemonData = await WebHandler.GetPokemonJson($"https://pokeapi.co/api/v2/pokemon/{firstPokemon}");
-            if (firstPokemonData == null) 
+            pokemonHead = pokemonHead.ToLower().Trim();
+            var pokemonHeadData = await WebHandler.GetPokemonJson($"https://pokeapi.co/api/v2/pokemon/{pokemonHead}");
+            if (pokemonHeadData == null) 
             {
-                await RespondAsync($"{firstPokemon} is not a real Pokemon", ephemeral: true);
+                await RespondAsync($"{pokemonHead} is not a real Pokemon", ephemeral: true);
                 return;
             }
 
-            secondPokemon = secondPokemon.ToLower().Trim();
-            var secondPokemonData = await WebHandler.GetPokemonJson($"https://pokeapi.co/api/v2/pokemon/{secondPokemon}");
-            if (secondPokemonData == null)
+            pokemonBody = pokemonBody.ToLower().Trim();
+            var pokemonBodyData = await WebHandler.GetPokemonJson($"https://pokeapi.co/api/v2/pokemon/{pokemonBody}");
+            if (pokemonBodyData == null)
             {
-                await RespondAsync($"{secondPokemon} is not a real Pokemon", ephemeral: true);
+                await RespondAsync($"{pokemonBody} is not a real Pokemon", ephemeral: true);
                 return;
             }
 
@@ -43,26 +43,44 @@ namespace Moobot.Modules.Commands
             var pokemonJson = Path.Combine(directoriesConfig["BaseDirectory"], "Modules/Commands/Pokemon/PokemonIds.json");
             var fusionData = JsonConvert.DeserializeObject<PokemonList>(File.ReadAllText(pokemonJson));
 
-            var firstPokemonFusionData = fusionData.Pokemons.FirstOrDefault(p => p.Name.ToLower() == firstPokemonData.Name.ToLower());
-            if (firstPokemonFusionData == null)
+            var pokemonHeadFusionData = fusionData.Pokemons.FirstOrDefault(p => p.Name.ToLower() == pokemonHeadData.Name.ToLower());
+            if (pokemonHeadFusionData == null)
             {
-                await RespondAsync($"{firstPokemon} does not exist is Pokemon Infinite Fusion", ephemeral: true);
+                await RespondAsync($"{pokemonHead} does not exist is Pokemon Infinite Fusion", ephemeral: true);
                 return;
             }
 
-            var secondPokemonFusionData = fusionData.Pokemons.FirstOrDefault(p => p.Name.ToLower() == secondPokemonData.Name.ToLower());
-            if (secondPokemonFusionData == null)
+            var pokemonBodyFusionData = fusionData.Pokemons.FirstOrDefault(p => p.Name.ToLower() == pokemonBodyData.Name.ToLower());
+            if (pokemonBodyFusionData == null)
             {
-                await RespondAsync($"{secondPokemon} does not exist is Pokemon Infinite Fusion", ephemeral: true);
+                await RespondAsync($"{pokemonBody} does not exist is Pokemon Infinite Fusion", ephemeral: true);
                 return;
             }
 
-            var spriteFile = $"{firstPokemonFusionData.Id}.{secondPokemonFusionData.Id}.png";
+            var spriteFilePath = "";
+            var variantsAmount = 0;
 
-            var spriteFilePath = Path.Combine(directoriesConfig["Fusions"], "customs", spriteFile);
-            if (!File.Exists(spriteFilePath))
+            if (variantType > -1)
             {
-                spriteFilePath = Path.Combine(directoriesConfig["Fusions"], firstPokemonFusionData.Id.ToString(), spriteFile);
+                // 97 is the ASCII code for 'a'
+                var spriteFile = $"{pokemonHeadFusionData.Id}.{pokemonBodyFusionData.Id}{(char)(variantType + 96)}.png";
+                spriteFilePath = Path.Combine(directoriesConfig["Fusions"], "customs", spriteFile);
+            } 
+            else
+            {
+                var spriteFile = $"{pokemonHeadFusionData.Id}.{pokemonBodyFusionData.Id}.png";
+                spriteFilePath = Path.Combine(directoriesConfig["Fusions"], "customs", spriteFile);
+
+                if (!File.Exists(spriteFilePath))
+                {
+                    spriteFilePath = Path.Combine(directoriesConfig["Fusions"], pokemonHeadFusionData.Id.ToString(), spriteFile);
+                }
+                else
+                {
+                    Console.WriteLine($"{pokemonHeadFusionData.Id}.{pokemonBodyFusionData.Id}");
+                    var reg = new Regex($@"{pokemonHeadFusionData.Id}\.{pokemonBodyFusionData.Id}[a-z]");
+                    variantsAmount = Directory.GetFiles(Path.Combine(directoriesConfig["Fusions"], "customs"), $"{pokemonHeadFusionData.Id}.{pokemonBodyFusionData.Id}*").Count(reg.IsMatch);
+                }
             }
 
             if (!File.Exists(spriteFilePath))
@@ -70,7 +88,15 @@ namespace Moobot.Modules.Commands
                 await RespondAsync($"Fusion sprite may not exist", ephemeral: true);
             }
 
-            await RespondWithFileAsync(spriteFilePath);
+            if (variantsAmount > 0)
+            {
+                await RespondWithFileAsync(spriteFilePath, text: $"This fusion has {variantsAmount} variants");
+            } 
+            else
+            {
+                await RespondWithFileAsync(spriteFilePath);
+            }
+            
         }
 
         [SlashCommand("fuse-random", "Fuse two random pokemons together")]
@@ -115,11 +141,24 @@ namespace Moobot.Modules.Commands
             var randomSprite = sprites[rand.Next(sprites.Length)];
 
             var pokemonIds = Path.GetFileNameWithoutExtension(randomSprite).Split('.');
+            var variantType = -1;
+
+            if (pokemonIds[1].Any(char.IsLetter))
+            {
+                variantType = (int)pokemonIds[1][pokemonIds[1].Length - 1] - 96; // 97 is the ASCII code for 'a'
+                pokemonIds[1] = pokemonIds[1].Remove(pokemonIds[1].Length - 1, 1);
+            }
 
             var firstPokemon = fusionData.Pokemons.FirstOrDefault(p => p.Id == int.Parse(pokemonIds[0]));
             var secondPokemon = fusionData.Pokemons.FirstOrDefault(p => p.Id == int.Parse(pokemonIds[1]));
 
-            await RespondWithFileAsync(sprites[rand.Next(sprites.Length)], text: $"{StringUtils.Capitalize(firstPokemon.Name)} + {StringUtils.Capitalize(secondPokemon.Name)}");
+            var fusionInfo = $"{StringUtils.Capitalize(firstPokemon.Name)} + {StringUtils.Capitalize(secondPokemon.Name)}";
+            if (variantType != -1)
+            {
+                fusionInfo += $". Sprite variant {variantType}";
+            }
+
+            await RespondWithFileAsync(randomSprite, text: fusionInfo);
         }
 
         [SlashCommand("roll", "Roll a simple or complex dices")]

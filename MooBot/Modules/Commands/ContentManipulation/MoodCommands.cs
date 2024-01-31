@@ -2,6 +2,8 @@
 using Moobot.Modules.Handlers;
 using MooBot.Configuration;
 using OpenCvSharp;
+using SixLabors.ImageSharp;
+using SixLabors.ImageSharp.PixelFormats;
 using TwemojiSharp;
 
 namespace MooBot.Modules.Commands.ContentManipulation

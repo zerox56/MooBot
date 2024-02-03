@@ -13,5 +13,7 @@ namespace Moobot.Database.Models.Entities
         public ICollection<Reminder> Reminders { get; set; }
 
         public ICollection<Role> Roles { get; set; }
+
+        public ICollection<AssignedCharacter> AssignedCharacters { get; set; }
     }
 }

@@ -1,6 +1,7 @@
 using Microsoft.EntityFrameworkCore;
 using Moobot.Database.Configurations;
 using Moobot.Database.Models.Entities;
+using MooBot.Database.Configurations;
 
 namespace Moobot.Database
 {
@@ -18,6 +19,8 @@ namespace Moobot.Database
         public virtual DbSet<User> User { get; set; }
         public virtual DbSet<Reminder> Reminder { get; set; }
         public virtual DbSet<UserReminder> UserReminder { get; set; }
+        public virtual DbSet<AssignedCharacter> AssignedCharacter { get; set; }
+        public virtual DbSet<Character> Character { get; set; }
 
         protected override void OnModelCreating(ModelBuilder builder)
         {
@@ -27,6 +30,8 @@ namespace Moobot.Database
             builder.ApplyConfiguration(new UserConfiguration());
             builder.ApplyConfiguration(new ReminderConfiguration());
             builder.ApplyConfiguration(new UserReminderConfiguration());
+            builder.ApplyConfiguration(new AssignedCharacterConfiguration());
+            builder.ApplyConfiguration(new CharacterConfiguration());
         }
 
         public override int SaveChanges()

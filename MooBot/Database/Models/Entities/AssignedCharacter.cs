@@ -2,7 +2,8 @@
 
 namespace Moobot.Database.Models.Entities
 {
-    public class AssignedCharacter : Entity
+    [Table("assigned_characters")]
+    public class AssignedCharacter
     {
         [Column("user_id")]
         public ulong UserId { get; set; }

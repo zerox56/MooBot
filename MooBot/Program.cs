@@ -7,8 +7,8 @@ using Microsoft.Extensions.DependencyInjection;
 using Microsoft.Extensions.Logging;
 using Moobot.Database;
 using Moobot.Managers;
-using Moobot.Modules.Commands;
 using MooBot.Configuration;
+using MooBot.Managers;
 using MooBot.Modules.Commands.Reminders;
 
 namespace Moobot
@@ -48,7 +48,8 @@ namespace Moobot
                 DefaultRetryMode = RetryMode.AlwaysFail,
                 LogLevel = LogSeverity.Verbose,
                 MessageCacheSize = 100,
-                AlwaysDownloadUsers = true
+                AlwaysDownloadUsers = true,
+                GatewayIntents = GatewayIntents.AllUnprivileged | GatewayIntents.MessageContent | GatewayIntents.GuildMessages
             }))
             // .AddTransient<LoggerService>()
             .AddSingleton(x => new InteractionService(x.GetRequiredService<DiscordSocketClient>()))
@@ -74,8 +75,11 @@ namespace Moobot
 
             var discordConfig = _config.GetSection("Discord");
 
+            Console.WriteLine(IsDebug());
+
             _client.Ready += async () =>
             {
+                Console.WriteLine("SETTING COMMANDS");
                 // If running the bot with DEBUG flag, register all commands to guild specified in config
                 if (IsDebug())
                     // Id of the test guild can be provided from the Configuration object
@@ -85,9 +89,10 @@ namespace Moobot
                     await _commands.RegisterCommandsGloballyAsync(true);
             };
 
+            _client.MessageReceived += MessageManager.OnMessageReceived;
+
             await _client.LoginAsync(TokenType.Bot, discordConfig["Token"]);
             await _client.StartAsync();
-
 
             await ReminderManager.InitializeReminders();
 

@@ -97,6 +97,9 @@ namespace Moobot.Managers
                     case "addUpdateReminderGif":
                         await ReminderCommands.UpdateGifReminderFollowUp(modal, customIdNumber);
                         break;
+                    case "newCharAssign":
+                        await GuildCommands.SetCharacterAssignmentFollowUp(modal);
+                        break;
                     default:
                         Console.WriteLine($"Uncaught case {modal.Data.CustomId} retrieved");
                         break;
@@ -140,6 +143,9 @@ namespace Moobot.Managers
                         break;
                     case "changeUserStatusReminder":
                         await ReminderCommands.ChangeUserReminderStatus(component, customIdNumber);
+                        break;
+                    case "createCharAssignment":
+                        await GuildCommands.SetCharacterAssignment(component);
                         break;
                     default:
                         Console.WriteLine($"Uncaught case {component.Data.CustomId} retrieved");

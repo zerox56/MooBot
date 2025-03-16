@@ -9,6 +9,7 @@ using MooBot.Database.Queries;
 using MooBot.Managers.CharacterAssignment;
 using MooBot.Managers.Enums;
 using MooBot.Modules.Handlers.Models.AutoAssign;
+using System;
 using System.Text.RegularExpressions;
 
 namespace MooBot.Modules.Handlers
@@ -149,8 +150,9 @@ namespace MooBot.Modules.Handlers
             //  Look @UserA! It's you for: (Char), (Char)
             //  But no assignees found for: (Char), (Char)
             var oneAndMissingAssignments = characterAssignments.Distinct().ToList();
-            if (oneAndMissingAssignments.Count == 2 && oneAndMissingAssignments.Contains(null))
+            if (oneAndMissingAssignments.Count == 2 && oneAndMissingAssignments.Any(c => c.User is null))
             {
+                //TODO: Maybe split this up instead of using 2 LINQ calls.
                 var userAssignments = characterAssignments.Where(c => c.User != null).ToList();
                 var oneAndMissingResponse = $"Look <@{userAssignments[0].User.Id}>! It's you for: {string.Join(", ", userAssignments.Select(c => c.Name))}";
                 var noAssignments = characterAssignments.Where(c => c.User == null).ToList();
@@ -162,13 +164,16 @@ namespace MooBot.Modules.Handlers
             var response = "Tagging:";
             foreach (var characterAssignment in characterAssignments)
             {
-                if (characterAssignment.User == null)
+                if (characterAssignment.User != null)
                 {
-                    response += $" <@{characterAssignment.User.Id}> ({characterAssignment.Name}),";
-                }
-                else if (characterAssignment.User.Id == ServiceManager.GetService<DiscordSocketClient>().CurrentUser.Id)
-                {
-                    response += $" Mooself ({characterAssignment.Name}),";
+                    if (characterAssignment.User.Id == ServiceManager.GetService<DiscordSocketClient>().CurrentUser.Id)
+                    {
+                        response += $" Mooself ({characterAssignment.Name}),";
+                    }
+                    else
+                    {
+                        response += $" <@{characterAssignment.User.Id}> ({characterAssignment.Name}),";
+                    }
                 }
                 else
                 {

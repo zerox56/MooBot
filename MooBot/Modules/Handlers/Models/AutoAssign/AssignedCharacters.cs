@@ -1,23 +1,27 @@
-﻿using Newtonsoft.Json.Serialization;
-using Newtonsoft.Json;
+﻿using MooBot.Converts;
+using System.Text.Json.Serialization;
 
 namespace MooBot.Modules.Handlers.Models.AutoAssign
 {
-    [JsonObject(NamingStrategyType = typeof(CamelCaseNamingStrategy))]
     public class AssignedCharacters
     {
+        [JsonPropertyName("characters")]
         public Character[] Characters { get; set; }
     }
 
-    [JsonObject(NamingStrategyType = typeof(CamelCaseNamingStrategy))]
     public class Character
     {
+        [JsonPropertyName("faelicanId")]
+        [JsonConverter(typeof(StringToULongConverter))]
         public ulong FaelicanId { get; set; }
 
+        [JsonPropertyName("faelicanName")]
         public string FaelicanName { get; set; }
 
+        [JsonPropertyName("franchiseName")]
         public string FranchiseName { get; set; }
 
+        [JsonPropertyName("name")]
         public string Name { get; set; }
     }
 }

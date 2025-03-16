@@ -49,7 +49,8 @@ namespace Moobot
                 DefaultRetryMode = RetryMode.AlwaysFail,
                 LogLevel = LogSeverity.Verbose,
                 MessageCacheSize = 100,
-                AlwaysDownloadUsers = true
+                AlwaysDownloadUsers = true,
+                GatewayIntents = GatewayIntents.AllUnprivileged | GatewayIntents.MessageContent | GatewayIntents.GuildMessages
             }))
             // .AddTransient<LoggerService>()
             .AddSingleton(x => new InteractionService(x.GetRequiredService<DiscordSocketClient>()))

@@ -22,7 +22,8 @@ namespace MooBot.Managers
             if (channelSet == default(Channel)) return;
 
             //TODO: Dynamically check guild id + allowed channels
-            if (guildId == ulong.Parse(ApplicationConfiguration.Configuration.GetSection("AssignPedia")["GuildId"]))
+            if (guildId == ulong.Parse(ApplicationConfiguration.Configuration.GetSection("Faelica")["GuildId"]) ||
+                guildId == ulong.Parse(ApplicationConfiguration.Configuration.GetSection("Discord")["TestGuildId"]))
             {
                 //TODO: Check if this even has to be awaited
                 await AutoAssignHandler.AutoAssignCharacters(msg);

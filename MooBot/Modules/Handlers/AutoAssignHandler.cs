@@ -1,8 +1,6 @@
 ﻿using Discord;
 using Discord.WebSocket;
-using Microsoft.EntityFrameworkCore;
 using Moobot.Database;
-using Moobot.Database.Models.Entities;
 using Moobot.Managers;
 using Moobot.Modules.Commands;
 using Moobot.Modules.Handlers;
@@ -11,7 +9,7 @@ using MooBot.Database.Queries;
 using MooBot.Managers.CharacterAssignment;
 using MooBot.Managers.Enums;
 using MooBot.Modules.Handlers.Models.AutoAssign;
-using System;
+using System.Text.RegularExpressions;
 
 namespace MooBot.Modules.Handlers
 {
@@ -46,7 +44,10 @@ namespace MooBot.Modules.Handlers
                 var characterAssignments = await GetCharactersList(result);
 
                 characterAssignments = await GetAssignedUsers(msg, characterAssignments);
+
                 //TODO: Move this outside of the loop later
+                var response = await CreateResponseMessage(characterAssignments);
+                await msg.Channel.SendMessageAsync(response);
             }
         }
 
@@ -89,17 +90,23 @@ namespace MooBot.Modules.Handlers
             var assignPediaConfig = ApplicationConfiguration.Configuration.GetSection("AssignPedia");
             var apiUri = new UriBuilder(assignPediaConfig["BaseApiUrl"] + "characters");
 
-            string apiUrl = "https://jsonplaceholder.typicode.com/users/1";
-            Character[]? characters = await WebHandler.GetJsonFromApi<Character[]>(apiUri.ToString());
+            var encodedQueryStringParams = string.Format("{0}={1}", "rosettes_key", assignPediaConfig["ApiKey"]);
+            apiUri.Query = string.Join("&", encodedQueryStringParams);
 
-            if (characters == default(Character[])) return null;
+            AssignedCharacters? assignedCharacters = await WebHandler.GetJsonFromApi<AssignedCharacters>(apiUri.ToString());
+
+            if (assignedCharacters == default(AssignedCharacters)) return null;
 
             var dbContext = ServiceManager.GetService<DatabaseContext>();
 
             foreach (var characterAssignment in characterAssignments)
             {
                 //TODO: Add some potentional conversion. x series or x character name might be named slightly different on the faelicapedia.
-                var assignedCharacter = characters.FirstOrDefault(c => c.Name.ToLower() == characterAssignment.Name.ToLower() && 
+                var cleanedupCharacter = Regex.Replace(characterAssignment.Name.ToLower(), @"\(\s*(" + characterAssignment.Series.ToLower() + @")\s*\)", "").Trim();
+
+                Console.WriteLine(cleanedupCharacter);
+
+                var assignedCharacter = assignedCharacters.Characters.FirstOrDefault(c => c.Name.ToLower() == cleanedupCharacter.ToLower() && 
                     c.FranchiseName.ToLower() == characterAssignment.Series.ToLower());
 
                 if (assignedCharacter == null) continue;
@@ -111,6 +118,68 @@ namespace MooBot.Modules.Handlers
 
             return characterAssignments;
         }
+
+        private static async Task<string> CreateResponseMessage(List<CharacterAssignment> characterAssignments)
+        {
+            //TODO: Add looping through multiple images
+
+            //If image has no assignees found, give the following response:
+            //  No assignees found for: (Char), (Char), (Char)
+            if (characterAssignments.All(c => c.User == null))
+            {
+                return $"No assignees found for: {string.Join(", ", characterAssignments.Select(c => c.Name))}";
+            }
+
+            //If image only has 1 user found who is also the uploader of an image, give the following response:
+            //  Look @UserA! It's you for: (Char), (Char)
+            if (characterAssignments.Select(c => c.User).Distinct().Count() <= 1)
+            {
+                if (characterAssignments[0].User.Id == ServiceManager.GetService<DiscordSocketClient>().CurrentUser.Id)
+                {
+                    return $"Look! It's Mooself for: {string.Join(", ", characterAssignments.Select(c => c.Name))}";
+                }
+                else
+                {
+                    return $"Look <@{characterAssignments[0].User.Id}>! It's you for: {string.Join(", ", characterAssignments.Select(c => c.Name))}";
+                }
+
+            }
+
+            //If image only has 1 user and some no assignees found who is also the uploader of an image, give the following response:
+            //  Look @UserA! It's you for: (Char), (Char)
+            //  But no assignees found for: (Char), (Char)
+            var oneAndMissingAssignments = characterAssignments.Distinct().ToList();
+            if (oneAndMissingAssignments.Count == 2 && oneAndMissingAssignments.Contains(null))
+            {
+                var userAssignments = characterAssignments.Where(c => c.User != null).ToList();
+                var oneAndMissingResponse = $"Look <@{userAssignments[0].User.Id}>! It's you for: {string.Join(", ", userAssignments.Select(c => c.Name))}";
+                var noAssignments = characterAssignments.Where(c => c.User == null).ToList();
+                oneAndMissingResponse += Environment.NewLine;
+                oneAndMissingResponse += $"But no assignees found for: {string.Join(", ", noAssignments.Select(c => c.Name))}";
+                return oneAndMissingResponse;
+            }
+
+            var response = "Tagging:";
+            foreach (var characterAssignment in characterAssignments)
+            {
+                if (characterAssignment.User == null)
+                {
+                    response += $" <@{characterAssignment.User.Id}> ({characterAssignment.Name}),";
+                }
+                else if (characterAssignment.User.Id == ServiceManager.GetService<DiscordSocketClient>().CurrentUser.Id)
+                {
+                    response += $" Mooself ({characterAssignment.Name}),";
+                }
+                else
+                {
+                    response += $" No one ({characterAssignment.Name}),";
+                }
+            }
+
+            response = response.Remove(response.Length - 1);
+            return response;
+        }
+
 
         private static async Task<List<string>> CreateUrlsList(SocketMessage msg)
         {

@@ -1,7 +1,7 @@
 ﻿using Newtonsoft.Json.Serialization;
 using Newtonsoft.Json;
 
-namespace MooBot.Modules.Handlers
+namespace MooBot.Modules.Handlers.Models.AutoAssign
 {
     [JsonObject(NamingStrategyType = typeof(SnakeCaseNamingStrategy))]
     public class SauceNaoSearch

@@ -1,11 +1,13 @@
 using MooBot.Configuration;
 using MooBot.Managers.Enums;
 using MooBot.Modules.Commands.Pokemon;
-using MooBot.Modules.Handlers;
 using MooBot.Modules.Handlers.Models;
+using MooBot.Modules.Handlers.Models.AutoAssign;
 using System.Globalization;
 using System.Net;
+using System.Net.Http;
 using System.Net.Http.Json;
+using System.Text.Json;
 using System.Web;
 
 namespace Moobot.Modules.Handlers
@@ -151,6 +153,28 @@ namespace Moobot.Modules.Handlers
                 return null;
             }
         }
+
+        public static async Task<T?> GetJsonFromApi<T>(string url)
+        {
+            try
+            {
+                var httpClient = new HttpClient();
+
+                using var response = await httpClient.GetAsync(url);
+                response.EnsureSuccessStatusCode();
+
+                var jsonResponse = await response.Content.ReadAsStringAsync();
+                return JsonSerializer.Deserialize<T>(jsonResponse, new JsonSerializerOptions
+                {
+                    PropertyNameCaseInsensitive = true
+                });
+            }
+            catch (Exception ex)
+            {
+                Console.WriteLine(ex);
+                return default;
+            }
+        } 
 
         private static async Task<TenorSearch> GetTenorResult(IEnumerable<string> queryParams)
         {

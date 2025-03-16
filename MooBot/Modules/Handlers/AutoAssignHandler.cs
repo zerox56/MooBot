@@ -1,11 +1,17 @@
 ﻿using Discord;
 using Discord.WebSocket;
+using Microsoft.EntityFrameworkCore;
 using Moobot.Database;
+using Moobot.Database.Models.Entities;
 using Moobot.Managers;
 using Moobot.Modules.Commands;
 using Moobot.Modules.Handlers;
+using MooBot.Configuration;
+using MooBot.Database.Queries;
 using MooBot.Managers.CharacterAssignment;
 using MooBot.Managers.Enums;
+using MooBot.Modules.Handlers.Models.AutoAssign;
+using System;
 
 namespace MooBot.Modules.Handlers
 {
@@ -79,6 +85,30 @@ namespace MooBot.Modules.Handlers
 
         private static async Task<List<CharacterAssignment>> GetAssignedUsers(SocketMessage msg, List<CharacterAssignment> characterAssignments)
         {
+            //TODO: Move this call further up. Only have to call this once no matter the amount of images
+            var assignPediaConfig = ApplicationConfiguration.Configuration.GetSection("AssignPedia");
+            var apiUri = new UriBuilder(assignPediaConfig["BaseApiUrl"] + "characters");
+
+            string apiUrl = "https://jsonplaceholder.typicode.com/users/1";
+            Character[]? characters = await WebHandler.GetJsonFromApi<Character[]>(apiUri.ToString());
+
+            if (characters == default(Character[])) return null;
+
+            var dbContext = ServiceManager.GetService<DatabaseContext>();
+
+            foreach (var characterAssignment in characterAssignments)
+            {
+                //TODO: Add some potentional conversion. x series or x character name might be named slightly different on the faelicapedia.
+                var assignedCharacter = characters.FirstOrDefault(c => c.Name.ToLower() == characterAssignment.Name.ToLower() && 
+                    c.FranchiseName.ToLower() == characterAssignment.Series.ToLower());
+
+                if (assignedCharacter == null) continue;
+
+                var assignedUser = await dbContext.User.GetUserById(assignedCharacter.FaelicanId, true);
+
+                characterAssignment.User = assignedUser;
+            }
+
             return characterAssignments;
         }
 

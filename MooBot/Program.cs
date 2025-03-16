@@ -9,6 +9,7 @@ using Moobot.Database;
 using Moobot.Managers;
 using Moobot.Modules.Commands;
 using MooBot.Configuration;
+using MooBot.Managers;
 using MooBot.Modules.Commands.Reminders;
 
 namespace Moobot
@@ -84,6 +85,8 @@ namespace Moobot
                     // If not debug, register commands globally
                     await _commands.RegisterCommandsGloballyAsync(true);
             };
+
+            _client.MessageReceived += MessageManager.OnMessageReceived;
 
             await _client.LoginAsync(TokenType.Bot, discordConfig["Token"]);
             await _client.StartAsync();

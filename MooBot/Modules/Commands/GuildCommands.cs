@@ -3,6 +3,7 @@ using Moobot.Database;
 using Moobot.Database.Models.Entities;
 using Moobot.Database.Queries;
 using Moobot.Managers;
+using Moobot.Utils;
 using MooBot.Configuration;
 
 namespace Moobot.Modules.Commands

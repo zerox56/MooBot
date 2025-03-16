@@ -1,6 +1,6 @@
 using System.Text.RegularExpressions;
 
-namespace Moobot.Modules.Commands
+namespace Moobot.Utils
 {
     public static class StringUtils
     {

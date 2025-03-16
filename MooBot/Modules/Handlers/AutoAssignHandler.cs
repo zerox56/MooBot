@@ -2,8 +2,8 @@
 using Discord.WebSocket;
 using Moobot.Database;
 using Moobot.Managers;
-using Moobot.Modules.Commands;
 using Moobot.Modules.Handlers;
+using Moobot.Utils;
 using MooBot.Configuration;
 using MooBot.Database.Queries;
 using MooBot.Managers.CharacterAssignment;

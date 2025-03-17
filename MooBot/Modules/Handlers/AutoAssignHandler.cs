@@ -1,6 +1,8 @@
 ﻿using Discord;
 using Discord.WebSocket;
 using Moobot.Database;
+using Moobot.Database.Models.Entities;
+using Moobot.Database.Queries;
 using Moobot.Managers;
 using Moobot.Modules.Handlers;
 using Moobot.Utils;
@@ -9,7 +11,6 @@ using MooBot.Database.Queries;
 using MooBot.Managers.CharacterAssignment;
 using MooBot.Managers.Enums;
 using MooBot.Modules.Handlers.Models.AutoAssign;
-using System;
 using System.Text.RegularExpressions;
 
 namespace MooBot.Modules.Handlers
@@ -26,7 +27,11 @@ namespace MooBot.Modules.Handlers
             // TODO: See if multithreading helps with speed
             // TODO: Assume 1 image is posted for now. But check for multiple later
             // TODO: Reduce size of image beforehand so it can never be too large?
+            // TODO: Get Database command status, If a limit is reached we can wait instead of making api calls first
+            // TODO: Update Database only once. Maybe do an extra update if a limit is reached
             var hasTooLargeImage = false;
+            var lastShortRemaining = 0;
+            var lastLongRemaining = 0;
             foreach (var url in urls)
             {
                 var isValidImage = await WebHandler.CheckValidImage(url);
@@ -42,6 +47,9 @@ namespace MooBot.Modules.Handlers
 
                 if (result == null) continue;
 
+                lastShortRemaining = result.Header.ShortRemaining;
+                lastLongRemaining = result.Header.LongRemaining;
+
                 var characterAssignments = await GetCharactersList(result);
 
                 characterAssignments = await GetAssignedUsers(msg, characterAssignments);
@@ -50,6 +58,19 @@ namespace MooBot.Modules.Handlers
                 var response = await CreateResponseMessage(characterAssignments);
                 await msg.Channel.SendMessageAsync(response);
             }
+
+            //TODO: Combine these in a single call
+            var dbContext = ServiceManager.GetService<DatabaseContext>();
+
+            CommandData shortRemainingData = await dbContext.CommandData.GetCommandDataById("saucenao_short_remaining", true);
+            shortRemainingData.Value = lastShortRemaining.ToString();
+            shortRemainingData.Type = "int";
+            await dbContext.SaveChangesAsync();
+
+            CommandData longRemainingData = await dbContext.CommandData.GetCommandDataById("saucenao_long_remaining", true);
+            longRemainingData.Value = lastLongRemaining.ToString();
+            longRemainingData.Type = "int";
+            await dbContext.SaveChangesAsync();
         }
 
         private static async Task<List<CharacterAssignment>> GetCharactersList(SauceNaoSearch searchResult)

@@ -6,11 +6,13 @@ using Microsoft.Extensions.Configuration;
 using Microsoft.Extensions.DependencyInjection;
 using Microsoft.Extensions.Logging;
 using Moobot.Database;
+using Moobot.Database.Models.Entities;
 using Moobot.Managers;
 using Moobot.Modules.Commands;
 using MooBot.Configuration;
 using MooBot.Managers;
 using MooBot.Modules.Commands.Reminders;
+using System;
 
 namespace Moobot
 {
@@ -47,10 +49,10 @@ namespace Moobot
             .AddSingleton(x => new DiscordSocketClient(new DiscordSocketConfig
             {
                 DefaultRetryMode = RetryMode.AlwaysFail,
-                LogLevel = LogSeverity.Verbose,
+                LogLevel = IsDebug() ? LogSeverity.Verbose : LogSeverity.Warning,
                 MessageCacheSize = 100,
                 AlwaysDownloadUsers = true,
-                GatewayIntents = GatewayIntents.AllUnprivileged | GatewayIntents.MessageContent | GatewayIntents.GuildMessages
+                GatewayIntents = GatewayIntents.AllUnprivileged | GatewayIntents.GuildMembers | GatewayIntents.MessageContent,
             }))
             // .AddTransient<LoggerService>()
             .AddSingleton(x => new InteractionService(x.GetRequiredService<DiscordSocketClient>()))
@@ -69,10 +71,15 @@ namespace Moobot
 
             await ServiceManager.Provider.GetRequiredService<InteractionManager>().InitializeAsync();
 
-            // Subscribe to client log events
-            // _client.Log += _ => provider.GetRequiredService<LoggerService>().Log(_);
-            // // Subscribe to slash command log events
-            // commands.Log += _ => provider.GetRequiredService<LoggerService>().Log(_);
+            // TODO: Make proper logger
+            if (IsDebug())
+            {
+                _client.Log += message =>
+                {
+                    Console.WriteLine(message);
+                    return Task.CompletedTask;
+                };
+            }
 
             var discordConfig = _config.GetSection("Discord");
 
@@ -80,18 +87,23 @@ namespace Moobot
             {
                 // If running the bot with DEBUG flag, register all commands to guild specified in config
                 if (IsDebug())
+                {
                     // Id of the test guild can be provided from the Configuration object
-                    await _commands.RegisterCommandsToGuildAsync(UInt64.Parse(discordConfig["TestGuildId"]), true);
+                    var result = await _commands.RegisterCommandsToGuildAsync(UInt64.Parse(discordConfig["TestGuildId"]), true);
+                }
                 else
+                {
                     // If not debug, register commands globally
                     await _commands.RegisterCommandsGloballyAsync(true);
+                }
+
+                Console.WriteLine("Slash commands registered successfully.");
             };
 
             _client.MessageReceived += MessageManager.OnMessageReceived;
 
             await _client.LoginAsync(TokenType.Bot, discordConfig["Token"]);
             await _client.StartAsync();
-
 
             await ReminderManager.InitializeReminders();
 

@@ -10,8 +10,5 @@ namespace Moobot.Database.Models.Entities
 
         [Column("user_reminder")]
         public ICollection<UserReminder> UserReminders { get; set; }
-
-        [Column("assigned_characters")]
-        public ICollection<AssignedCharacter> AssignedCharacters { get; set; }
     }
 }

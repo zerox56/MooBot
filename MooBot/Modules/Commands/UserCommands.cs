@@ -8,7 +8,7 @@ namespace MooBot.Modules.Commands
 {
     public class UserCommands : InteractionModuleBase<SocketInteractionContext>
     {
-        [SlashCommand("ping-for-Assignees", "Enables or disables being pinged for an assigned character")]
+        [SlashCommand("ping-for-assignees", "Enables or disables being pinged for an assigned character")]
         public async Task SetPingForAssignees()
         {
             try

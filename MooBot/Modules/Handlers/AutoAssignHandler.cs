@@ -218,10 +218,12 @@ namespace MooBot.Modules.Handlers
             foreach (var characterAssignment in characterAssignments)
             {
                 //TODO: Add some potentional conversion. x series or x character name might be named slightly different on the faelicapedia.
-                var cleanedupCharacter = Regex.Replace(characterAssignment.Name.ToLower(), @"\(\s*(" + characterAssignment.Series.ToLower() + @")\s*\)", "").Trim();
+                var cleanedupCharacter = Regex.Replace(characterAssignment.Name, @"\s*\(.*?\)", "").Trim();
+                var cleanedupCharacterRevered = StringUtils.ReverseWords(cleanedupCharacter);
 
-                var assignedCharacter = assignedCharacters.Characters.FirstOrDefault(c => c.Name.ToLower() == cleanedupCharacter.ToLower() && 
-                    c.FranchiseName.ToLower() == characterAssignment.Series.ToLower());
+                var assignedCharacter = assignedCharacters.Characters.FirstOrDefault(c =>
+                    c.Name.ToLower() == cleanedupCharacter.ToLower() ||
+                    c.Name.ToLower() == cleanedupCharacterRevered.ToLower());
 
                 if (assignedCharacter == null) continue;
 
@@ -229,6 +231,7 @@ namespace MooBot.Modules.Handlers
 
                 characterAssignment.User = assignedUser;
                 characterAssignment.UserName = assignedCharacter.FaelicanName;
+                characterAssignment.Name = StringUtils.CapitalizeAll(characterAssignment.Name);
             }
 
             return characterAssignments;

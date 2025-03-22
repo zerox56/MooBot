@@ -1,4 +1,4 @@
-﻿namespace MooBot.Modules.Handlers
+﻿namespace MooBot.Modules.Handlers.Models
 {
     public class TenorSearch
     {

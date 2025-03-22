@@ -18,6 +18,7 @@ namespace Moobot.Database
         public virtual DbSet<User> User { get; set; }
         public virtual DbSet<Reminder> Reminder { get; set; }
         public virtual DbSet<UserReminder> UserReminder { get; set; }
+        public virtual DbSet<CommandData> CommandData { get; set; }
 
         protected override void OnModelCreating(ModelBuilder builder)
         {
@@ -27,6 +28,7 @@ namespace Moobot.Database
             builder.ApplyConfiguration(new UserConfiguration());
             builder.ApplyConfiguration(new ReminderConfiguration());
             builder.ApplyConfiguration(new UserReminderConfiguration());
+            builder.ApplyConfiguration(new CommandDataConfiguration());
         }
 
         public override int SaveChanges()
@@ -60,6 +62,25 @@ namespace Moobot.Database
                     if (entity.State == EntityState.Modified)
                     {
                         ((Entity)entity.Entity).DateModified = DateTime.Now;
+                    }
+                }
+            }
+
+            var timestampEntities = ChangeTracker.Entries().Where(x => (x.Entity is TimestampEntity)
+                && (x.State == EntityState.Added || x.State == EntityState.Detached || x.State == EntityState.Modified));
+
+            foreach (var timestampEntity in timestampEntities)
+            {
+                if (timestampEntity.Entity is TimestampEntity)
+                {
+                    if (timestampEntity.State == EntityState.Added)
+                    {
+                        ((TimestampEntity)timestampEntity.Entity).DateCreated = DateTime.Now;
+                    }
+
+                    if (timestampEntity.State == EntityState.Modified)
+                    {
+                        ((TimestampEntity)timestampEntity.Entity).DateModified = DateTime.Now;
                     }
                 }
             }

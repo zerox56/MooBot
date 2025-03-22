@@ -10,14 +10,18 @@ namespace Moobot.Database.Queries
         {
             Channel channel = await channelSet.Where(c => c.Id == channelId && c.GuildId == guildId).FirstOrDefaultAsync();
 
-            if (channel != default(Channel) || !createIfNotExists)
+            if (channel == default(Channel))
             {
-                var dbContext = ServiceManager.GetService<DatabaseContext>();
-                await dbContext.Entry(channel).Collection(c => c.Reminders).LoadAsync();
+                if (createIfNotExists)
+                {
+                    return await CreateChannelById(channelSet, channelId, guildId);
+                }
                 return channel;
             }
 
-            return await CreateChannelById(channelSet, channelId, guildId);
+            var dbContext = ServiceManager.GetService<DatabaseContext>();
+            await dbContext.Entry(channel).Collection(c => c.Reminders).LoadAsync();
+            return channel;
         }
 
         public static async Task<dynamic> CreateChannelById(this DbSet<Channel> channelSet, ulong channelId, ulong guildId)

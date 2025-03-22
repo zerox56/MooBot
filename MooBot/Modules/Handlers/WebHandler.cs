@@ -1,9 +1,14 @@
 using MooBot.Configuration;
+using MooBot.Managers.Enums;
 using MooBot.Modules.Commands.Pokemon;
-using MooBot.Modules.Handlers;
+using MooBot.Modules.Handlers.Models;
+using MooBot.Modules.Handlers.Models.AutoAssign;
+using System.Globalization;
+using System.Net;
+using System.Net.Http;
 using System.Net.Http.Json;
+using System.Text.Json;
 using System.Web;
-using static System.Runtime.InteropServices.JavaScript.JSType;
 
 namespace Moobot.Modules.Handlers
 {
@@ -85,7 +90,95 @@ namespace Moobot.Modules.Handlers
                 Console.WriteLine(ex);
                 return null;
             }
-}
+        }
+
+        public static async Task<WebResponseEnum> CheckValidImage(string url)
+        {
+            var req = WebRequest.Create(url);
+            req.Method = "HEAD";
+
+            try
+            {
+                using (var res = (HttpWebResponse)req.GetResponse())
+                {
+                    if (res.StatusCode == HttpStatusCode.TooManyRequests) return WebResponseEnum.TooManyRequests;
+
+                    if (res.StatusCode != HttpStatusCode.OK) return WebResponseEnum.Error;
+
+                    if (!res.ContentType.ToLower(CultureInfo.InvariantCulture).StartsWith("image/")) return WebResponseEnum.InvalidContent;
+
+                    if (res.ContentLength > (20 * 1024 * 1024)) return WebResponseEnum.TooLarge;
+
+                    return WebResponseEnum.OK;
+                }
+            }
+            catch (WebException ex)
+            {
+                return WebResponseEnum.Error;
+            }
+        }
+
+        public static async Task<SauceNaoSearch> GetImageSauce(string url)
+        {
+            var uri = new UriBuilder("https://saucenao.com/search.php");
+            var sauceNaoConfig = ApplicationConfiguration.Configuration.GetSection("SauceNao");
+            var queryParams = new Dictionary<string, string>() {
+                { "api_key", sauceNaoConfig["ApiKey"] },
+                { "output_type", "2" },
+                { "url", url }
+            };
+
+            var encodedQueryStringParams = queryParams.Select(p => string.Format("{0}={1}", p.Key, HttpUtility.UrlEncode(p.Value)));
+
+            uri.Query = string.Join("&", encodedQueryStringParams);
+
+            var httpClient = new HttpClient();
+
+            try
+            {
+                var response = await httpClient.GetAsync(uri.Uri);
+
+                if (response.StatusCode == HttpStatusCode.TooManyRequests)
+                {
+                    await Task.Delay(30);
+                    response = await httpClient.GetAsync(uri.Uri);
+                }
+
+                var searchResult = await response.Content.ReadFromJsonAsync<SauceNaoSearch>();
+
+                if (searchResult.Header.Status != 0) return null;
+                if (searchResult.Results.Length == 0) return null;
+
+                return searchResult;
+            }
+            catch (Exception ex)
+            {
+                Console.WriteLine(ex.Message);
+                return null;
+            }
+        }
+
+        public static async Task<T?> GetJsonFromApi<T>(string url)
+        {
+            try
+            {
+                var httpClient = new HttpClient();
+
+                using var response = await httpClient.GetAsync(url);
+                response.EnsureSuccessStatusCode();
+
+                var jsonResponse = await response.Content.ReadAsStringAsync();
+                return JsonSerializer.Deserialize<T>(jsonResponse, new JsonSerializerOptions
+                {
+                    PropertyNameCaseInsensitive = true
+                });
+            }
+            catch (Exception ex)
+            {
+                Console.WriteLine(ex);
+                return default;
+            }
+        } 
 
         private static async Task<TenorSearch> GetTenorResult(IEnumerable<string> queryParams)
         {

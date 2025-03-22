@@ -48,5 +48,16 @@ namespace Moobot.Utils
 
             return count;
         }
+
+        public static string ReverseWords(string str)
+        {
+            var words = str.Split(' ');
+            var reversedStr = "";
+            for (int i = words.Length - 1; i >= 0; i--)
+            {
+                reversedStr += words[i] + " ";
+            }
+            return reversedStr.TrimEnd();
+        }
     }
 }

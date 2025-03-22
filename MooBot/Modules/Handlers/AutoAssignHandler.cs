@@ -21,7 +21,6 @@ namespace MooBot.Modules.Handlers
         {
             //Check if attachments, embeds or urls
             var urls = await CreateUrlsList(msg);
-            Console.WriteLine("URL COUNT: " + urls.Count);
             if (urls.Count == 0) return;
 
             // TODO: See if multithreading helps with speed
@@ -134,7 +133,7 @@ namespace MooBot.Modules.Handlers
         {
             float lastSimilarity = -1;
             float highestSimilarity = -1;
-            var characterAssignments = new List<CharacterAssignment>();
+            var characters = new List<CharacterAssignment>();
 
             foreach (var result in searchResult.Results)
             {
@@ -144,7 +143,7 @@ namespace MooBot.Modules.Handlers
                 foreach (var character in result.Data.Characters.Split(',').ToList())
                 {
                     var characterAssignment = new CharacterAssignment { Name = character.Trim(), Series = result.Data.Material };
-                    characterAssignments.Add(characterAssignment);
+                    characters.Add(characterAssignment);
                 }
 
                 lastSimilarity = result.Header.GetSimilarity();
@@ -154,13 +153,46 @@ namespace MooBot.Modules.Handlers
                 }
             }
 
-            // TODO: Cleanup alternatives. CharA is same as CharA (Bunny)
-            characterAssignments = characterAssignments
+            characters = characters
                 .GroupBy(c => new { c.Name, c.Series })
                 .Select(g => g.First())
                 .ToList();
 
+            var characterAssignments = new List<CharacterAssignment>();
+            foreach (var character in characters)
+            {
+                if (character.Name.Contains('('))
+                {
+                    if (CheckCharacterSpecificsDuplicate(character.Name, characterAssignments)) continue;
+                }
+
+                if (CheckCharacterReversedDuplicate(character.Name, characterAssignments)) continue;
+
+                characterAssignments.Add(character);
+            }
+
             return characterAssignments;
+        }
+
+        private static bool CheckCharacterSpecificsDuplicate(string characterName, List<CharacterAssignment> characterAssignments)
+        {
+            var startIndex = characterName.IndexOf('(');
+            var endIndex = characterName.IndexOf(')', startIndex + 1);
+
+            if (startIndex != -1 && endIndex != -1)
+            {
+                characterName = characterName.Remove(startIndex, endIndex - startIndex + 1);
+                return characterAssignments.Exists(c => c.Name.ToLower().Trim() == characterName);
+            }
+
+            return false;
+        }
+
+        private static bool CheckCharacterReversedDuplicate(string characterName, List<CharacterAssignment> characterAssignments)
+        {
+            characterName = Regex.Replace(characterName, @"\s*\(.*?\)", "").Trim();
+            characterName = StringUtils.ReverseWords(characterName);
+            return characterAssignments.Exists(c => c.Name.ToLower().Trim() == characterName);
         }
 
         private static async Task<AssignedCharacters> GetAssignedCharacters()
@@ -187,8 +219,6 @@ namespace MooBot.Modules.Handlers
             {
                 //TODO: Add some potentional conversion. x series or x character name might be named slightly different on the faelicapedia.
                 var cleanedupCharacter = Regex.Replace(characterAssignment.Name.ToLower(), @"\(\s*(" + characterAssignment.Series.ToLower() + @")\s*\)", "").Trim();
-
-                Console.WriteLine(cleanedupCharacter);
 
                 var assignedCharacter = assignedCharacters.Characters.FirstOrDefault(c => c.Name.ToLower() == cleanedupCharacter.ToLower() && 
                     c.FranchiseName.ToLower() == characterAssignment.Series.ToLower());
@@ -306,10 +336,6 @@ namespace MooBot.Modules.Handlers
         {
             var urls = new List<string>();
             var contentUrls = StringUtils.GetAllUrls(msg.Content);
-
-            Console.WriteLine("CONTENT: " + msg.Content);
-            Console.WriteLine("ATTACHMENTS: " + msg.Attachments.Any());
-            Console.WriteLine("EMBEDS: " + msg.Embeds.Any());
 
             if (msg.Attachments.Count == 0 && msg.Embeds.Count == 0 && contentUrls.Length == 0)
             {

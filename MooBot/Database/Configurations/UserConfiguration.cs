@@ -8,7 +8,7 @@ namespace Moobot.Database.Configurations
     {
         public override void Configure(EntityTypeBuilder<User> builder)
         {
-            builder.Property(u => u.PingForAssignees).HasDefaultValue(false);
+            builder.Property(u => u.PingForAssignees).HasDefaultValue(true);
 
             base.Configure(builder);
         }

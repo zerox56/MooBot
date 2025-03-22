@@ -101,6 +101,8 @@ namespace Moobot.Modules.Handlers
             {
                 using (var res = (HttpWebResponse)req.GetResponse())
                 {
+                    if (res.StatusCode == HttpStatusCode.TooManyRequests) return WebResponseEnum.TooManyRequests;
+
                     if (res.StatusCode != HttpStatusCode.OK) return WebResponseEnum.Error;
 
                     if (!res.ContentType.ToLower(CultureInfo.InvariantCulture).StartsWith("image/")) return WebResponseEnum.InvalidContent;
@@ -130,17 +132,19 @@ namespace Moobot.Modules.Handlers
 
             uri.Query = string.Join("&", encodedQueryStringParams);
 
-            Console.WriteLine("URL IMAGE INFO");
-            Console.WriteLine(uri.Uri);
-            Console.WriteLine(uri.Query);
-
             var httpClient = new HttpClient();
 
             try
             {
-                var searchResult = await httpClient.GetFromJsonAsync<SauceNaoSearch>(uri.Uri);
+                var response = await httpClient.GetAsync(uri.Uri);
 
-                Console.WriteLine(searchResult);
+                if (response.StatusCode == HttpStatusCode.TooManyRequests)
+                {
+                    await Task.Delay(30);
+                    response = await httpClient.GetAsync(uri.Uri);
+                }
+
+                var searchResult = await response.Content.ReadFromJsonAsync<SauceNaoSearch>();
 
                 if (searchResult.Header.Status != 0) return null;
                 if (searchResult.Results.Length == 0) return null;

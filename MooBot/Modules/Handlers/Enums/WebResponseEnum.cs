@@ -5,6 +5,7 @@
         OK,
         Error,
         TooLarge,
-        InvalidContent
+        InvalidContent,
+        TooManyRequests
     }
 }

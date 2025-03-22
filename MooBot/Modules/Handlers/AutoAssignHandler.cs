@@ -198,6 +198,7 @@ namespace MooBot.Modules.Handlers
                 var assignedUser = await dbContext.User.GetUserById(assignedCharacter.FaelicanId, true);
 
                 characterAssignment.User = assignedUser;
+                characterAssignment.UserName = assignedCharacter.FaelicanName;
             }
 
             return characterAssignments;
@@ -205,15 +206,14 @@ namespace MooBot.Modules.Handlers
 
         private static async Task<string> CreateResponseMessage(List<CharacterAssignment> characterAssignments)
         {
-            //TODO: Add looping through multiple images
-            //TODO: Replace with StringBuilder
-
             //If image has no assignees found, give the following response:
             //  No assignees found for: (Char), (Char), (Char)
             if (characterAssignments.All(c => c.User == null))
             {
                 return $"No assignees found for: {string.Join(", ", characterAssignments.Select(c => c.Name))}";
             }
+
+            var dbContext = ServiceManager.GetService<DatabaseContext>();
 
             //If image only has 1 user found who is also the uploader of an image, give the following response:
             //  Look @UserA! It's you for: (Char), (Char)
@@ -225,7 +225,17 @@ namespace MooBot.Modules.Handlers
                 }
                 else
                 {
-                    return $"Look <@{characterAssignments[0].User.Id}>! It's you for: {string.Join(", ", characterAssignments.Select(c => c.Name))}";
+                    User user = await dbContext.User.GetUserById(characterAssignments[0].User.Id, true);
+                    var userMessagePart = "";
+                    if (user.PingForAssignees)
+                    {
+                        userMessagePart = $"Look <@{characterAssignments[0].User.Id}>!";
+                    } 
+                    else
+                    {
+                        userMessagePart = $"Look {characterAssignments[0].UserName}!";
+                    }
+                    return $"{userMessagePart} It's you for: {string.Join(", ", characterAssignments.Select(c => c.Name))}";
                 }
 
             }
@@ -238,7 +248,18 @@ namespace MooBot.Modules.Handlers
             {
                 //TODO: Maybe split this up instead of using 2 LINQ calls.
                 var userAssignments = characterAssignments.Where(c => c.User != null).ToList();
-                var oneAndMissingResponse = $"Look <@{userAssignments[0].User.Id}>! It's you for: {string.Join(", ", userAssignments.Select(c => c.Name))}";
+                User user = await dbContext.User.GetUserById(userAssignments[0].User.Id, true);
+                var userMessagePart = "";
+                if (user.PingForAssignees)
+                {
+                    userMessagePart = $"Look <@{userAssignments[0].User.Id}>!";
+                }
+                else
+                {
+                    userMessagePart = $"Look {userAssignments[0].UserName}!";
+                }
+                var oneAndMissingResponse = $"{userMessagePart} It's you for: {string.Join(", ", userAssignments.Select(c => c.Name))}";
+
                 var noAssignments = characterAssignments.Where(c => c.User == null).ToList();
                 oneAndMissingResponse += Environment.NewLine;
                 oneAndMissingResponse += $"But no assignees found for: {string.Join(", ", noAssignments.Select(c => c.Name))}";
@@ -256,7 +277,18 @@ namespace MooBot.Modules.Handlers
                     }
                     else
                     {
-                        response += $" <@{characterAssignment.User.Id}> ({characterAssignment.Name}),";
+                        User user = await dbContext.User.GetUserById(characterAssignment.User.Id, true);
+                        var userMessagePart = "";
+                        if (user.PingForAssignees)
+                        {
+                            userMessagePart = $"<@{characterAssignment.User.Id}>";
+                        }
+                        else
+                        {
+                            userMessagePart = $"{characterAssignment.UserName}";
+                        }
+
+                        response += $" {userMessagePart}({characterAssignment.Name}),";
                     }
                 }
                 else

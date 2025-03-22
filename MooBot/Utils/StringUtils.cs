@@ -65,5 +65,10 @@ namespace Moobot.Utils
             }
             return reversedStr.TrimEnd();
         }
+
+        public static string RemoveNewLines(string str)
+        {
+            return str.Replace(Environment.NewLine, "");
+        } 
     }
 }

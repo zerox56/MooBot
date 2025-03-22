@@ -57,7 +57,8 @@ namespace MooBot.Modules.Handlers
 
             if (validUrls.Count == 0) 
             {
-                responseMsg.ModifyAsync(m => m.Content = "No images found Moo can read...");
+                //responseMsg.ModifyAsync(m => m.Content = "No images found Moo can read...");
+                responseMsg.DeleteAsync();
                 return;
             }
 

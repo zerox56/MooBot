@@ -29,20 +29,66 @@ namespace MooBot.Modules.Handlers
             // TODO: Reduce size of image beforehand so it can never be too large?
             // TODO: Get Database command status, If a limit is reached we can wait instead of making api calls first
             // TODO: Update Database only once. Maybe do an extra update if a limit is reached
+
+            var responseMsg = await msg.Channel.SendMessageAsync("Processing imags...");
+
+            var validUrls = new List<string>();
             var hasTooLargeImage = false;
+            var invalidImage = false;
             var lastShortRemaining = 0;
             var lastLongRemaining = 0;
+
             foreach (var url in urls)
             {
                 var isValidImage = await WebHandler.CheckValidImage(url);
 
-                if (isValidImage == WebResponseEnum.TooLarge)
+                if (isValidImage == WebResponseEnum.OK)
+                {
+                    validUrls.Add(url);
+                }
+                else if (isValidImage == WebResponseEnum.TooLarge)
                 {
                     hasTooLargeImage = true;
-                    continue;
                 }
-                if (isValidImage != WebResponseEnum.OK) continue;
+                else
+                {
+                    invalidImage = true;
+                }
+            }
 
+            if (validUrls.Count == 0) 
+            {
+                responseMsg.ModifyAsync(m => m.Content = "No images found Moo can read...");
+                return;
+            }
+
+            var assignedCharacters = await GetAssignedCharacters();
+            if (assignedCharacters == null)
+            {
+                responseMsg.ModifyAsync(m => m.Content = "Something went wrong...");
+                return;
+            }
+
+            if (validUrls.Count >= 4)
+            {
+                responseMsg.ModifyAsync(m => m.Content = "More than 3 images found to check, this might take a while...");
+            }
+
+            var dbContext = ServiceManager.GetService<DatabaseContext>();
+            CommandData shortRemainingData = await dbContext.CommandData.GetCommandDataById("saucenao_short_remaining", true);
+            CommandData longRemainingData = await dbContext.CommandData.GetCommandDataById("saucenao_long_remaining", true);
+            lastShortRemaining = int.Parse(shortRemainingData.Value);
+            lastLongRemaining = int.Parse(longRemainingData.Value);
+
+            var assigneesMsg = "";
+
+            if (lastShortRemaining >= 4 && shortRemainingData.DateModified.Value.AddSeconds(30) >= DateTime.Now)
+            {
+                await Task.Delay(TimeSpan.FromSeconds(30));
+            }
+
+            foreach (var url in validUrls)
+            {
                 var result = await WebHandler.GetImageSauce(url);
 
                 if (result == null) continue;
@@ -50,24 +96,35 @@ namespace MooBot.Modules.Handlers
                 lastShortRemaining = result.Header.ShortRemaining;
                 lastLongRemaining = result.Header.LongRemaining;
 
+                if (result.Results == null || result.Results.Length == 0)
+                {
+                    if (lastLongRemaining + validUrls.Count > 100)
+                    {
+                        await msg.Channel.SendMessageAsync("Moo can't process images, reached the daily timeout...");
+                        return;
+                    }
+                    await Task.Delay(TimeSpan.FromSeconds(30));
+
+                    result = await WebHandler.GetImageSauce(url);
+
+                    if (result == null) continue;
+
+                    lastShortRemaining = result.Header.ShortRemaining;
+                    lastLongRemaining = result.Header.LongRemaining;
+                }
+
                 var characterAssignments = await GetCharactersList(result);
+                characterAssignments = await GetAssignedUsers(assignedCharacters, characterAssignments);
 
-                characterAssignments = await GetAssignedUsers(msg, characterAssignments);
-
-                //TODO: Move this outside of the loop later
-                var response = await CreateResponseMessage(characterAssignments);
-                await msg.Channel.SendMessageAsync(response);
+                assigneesMsg += await CreateResponseMessage(characterAssignments) + Environment.NewLine;
             }
 
-            //TODO: Combine these in a single call
-            var dbContext = ServiceManager.GetService<DatabaseContext>();
+            responseMsg.ModifyAsync(m => m.Content = assigneesMsg);
 
-            CommandData shortRemainingData = await dbContext.CommandData.GetCommandDataById("saucenao_short_remaining", true);
             shortRemainingData.Value = lastShortRemaining.ToString();
             shortRemainingData.Type = "int";
             await dbContext.SaveChangesAsync();
 
-            CommandData longRemainingData = await dbContext.CommandData.GetCommandDataById("saucenao_long_remaining", true);
             longRemainingData.Value = lastLongRemaining.ToString();
             longRemainingData.Type = "int";
             await dbContext.SaveChangesAsync();
@@ -106,7 +163,7 @@ namespace MooBot.Modules.Handlers
             return characterAssignments;
         }
 
-        private static async Task<List<CharacterAssignment>> GetAssignedUsers(SocketMessage msg, List<CharacterAssignment> characterAssignments)
+        private static async Task<AssignedCharacters> GetAssignedCharacters()
         {
             //TODO: Move this call further up. Only have to call this once no matter the amount of images
             var assignPediaConfig = ApplicationConfiguration.Configuration.GetSection("AssignPedia");
@@ -119,6 +176,11 @@ namespace MooBot.Modules.Handlers
 
             if (assignedCharacters == default(AssignedCharacters)) return null;
 
+            return assignedCharacters;
+        }
+
+        private static async Task<List<CharacterAssignment>> GetAssignedUsers(AssignedCharacters assignedCharacters, List<CharacterAssignment> characterAssignments)
+        {
             var dbContext = ServiceManager.GetService<DatabaseContext>();
 
             foreach (var characterAssignment in characterAssignments)
@@ -144,6 +206,7 @@ namespace MooBot.Modules.Handlers
         private static async Task<string> CreateResponseMessage(List<CharacterAssignment> characterAssignments)
         {
             //TODO: Add looping through multiple images
+            //TODO: Replace with StringBuilder
 
             //If image has no assignees found, give the following response:
             //  No assignees found for: (Char), (Char), (Char)

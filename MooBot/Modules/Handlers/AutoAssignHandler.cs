@@ -118,6 +118,12 @@ namespace MooBot.Modules.Handlers
                 assigneesMsg += await CreateResponseMessage(characterAssignments) + Environment.NewLine;
             }
 
+            if (StringUtils.RemoveNewLines(assigneesMsg).Trim() == "")
+            {
+                responseMsg.DeleteAsync();
+                return;
+            }
+
             responseMsg.ModifyAsync(m => m.Content = assigneesMsg);
 
             shortRemainingData.Value = lastShortRemaining.ToString();
@@ -243,7 +249,8 @@ namespace MooBot.Modules.Handlers
             //  No assignees found for: (Char), (Char), (Char)
             if (characterAssignments.All(c => c.User == null))
             {
-                return $"No assignees found for: {string.Join(", ", characterAssignments.Select(c => c.Name))}";
+                //return $"No assignees found for: {string.Join(", ", characterAssignments.Select(c => c.Name))}";
+                return "";
             }
 
             var dbContext = ServiceManager.GetService<DatabaseContext>();

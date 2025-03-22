@@ -17,9 +17,10 @@ namespace MooBot.Managers
             // Check if message comes from a guild channel with a message action enabled
             var guildId = (msg.Channel as SocketGuildChannel)?.Guild.Id ?? 0;
             var dbContext = ServiceManager.GetService<DatabaseContext>();
-            var channelSet = await dbContext.Channel.GetChannelById(msg.Channel.Id, guildId);
+            var channel = await dbContext.Channel.GetChannelById(msg.Channel.Id, guildId);
 
-            if (channelSet == default(Channel)) return;
+            if (channel == default(Channel)) return;
+            if (!channel.CheckAssignees) return;
 
             //TODO: Dynamically check guild id + allowed channels
             if (guildId == ulong.Parse(ApplicationConfiguration.Configuration.GetSection("Faelica")["GuildId"]) ||

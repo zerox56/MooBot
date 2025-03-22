@@ -78,5 +78,48 @@ namespace Moobot.Modules.Commands
                 await RespondAsync("Something went wrong", ephemeral: true);
             }
         }
+
+        [SlashCommand("set-assignees", "Sets the channel to check for character sassignees")]
+        public async Task SetCheckingAssigneesChannel()
+        {
+            try
+            {
+                if (Context.Guild == null)
+                {
+                    await RespondAsync("This is command is not ment for here");
+                    return;
+                }
+
+                // TODO: Set default permissions to guild owner and invitee user
+                if (Context.User.Id.ToString() != ApplicationConfiguration.Configuration.GetSection("Discord")["BotOwnerId"])
+                {
+                    await RespondAsync("You don't have permissions to use this command here", ephemeral: true);
+                    return;
+                }
+
+                var dbContext = ServiceManager.GetService<DatabaseContext>();
+                Guild guild = await dbContext.Guild.GetGuildById(Context.Guild.Id, true);
+                Channel channel = await dbContext.Channel.GetChannelById(Context.Channel.Id, guild.Id, true);
+
+                channel.CheckAssignees = !channel.CheckAssignees;
+                dbContext.SaveChanges();
+
+                if (channel.CheckAssignees)
+                {
+                    await RespondAsync("Checking assignees has been enabled on this channel");
+                } 
+                else
+                {
+                    await RespondAsync("Checking assignees has been disables on this channel");
+                }
+                
+                return;
+            }
+            catch (Exception e)
+            {
+                Console.WriteLine(e.ToString());
+                await RespondAsync("Something went wrong", ephemeral: true);
+            }
+        }
     }
 }

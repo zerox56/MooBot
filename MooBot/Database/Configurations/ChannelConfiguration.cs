@@ -9,6 +9,7 @@ namespace Moobot.Database.Configurations
         public override void Configure(EntityTypeBuilder<Channel> builder)
         {
             builder.Property(c => c.Link).HasDefaultValue("");
+            builder.Property(c => c.CheckAssignees).HasDefaultValue(false);
             builder.HasOne(c => c.Guild).WithMany(g => g.Channels).HasForeignKey(c => c.GuildId);
             builder.HasMany(c => c.Reminders).WithOne(r => r.Channel).HasForeignKey(r => r.ChannelId);
 

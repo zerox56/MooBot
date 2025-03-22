@@ -1,3 +1,4 @@
+using System.Globalization;
 using System.Text.RegularExpressions;
 
 namespace Moobot.Utils
@@ -34,6 +35,11 @@ namespace Moobot.Utils
         public static string Capitalize(string str)
         {
             return char.ToUpper(str[0]) + str.Substring(1);
+        }
+
+        public static string CapitalizeAll(string str)
+        {
+            return CultureInfo.CurrentCulture.TextInfo.ToTitleCase(str);
         }
 
         public static int CountOccurrences(string str, string word)

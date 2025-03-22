@@ -1,6 +1,6 @@
 using System.Text.RegularExpressions;
 
-namespace Moobot.Modules.Commands
+namespace Moobot.Utils
 {
     public static class StringUtils
     {
@@ -9,7 +9,7 @@ namespace Moobot.Modules.Commands
             return Uri.IsWellFormedUriString(url, UriKind.Absolute);
         }
 
-        public static string[] GetAllUrls(string str) 
+        public static string[] GetAllUrls(string str)
         {
             List<string> validUrls = new List<string>();
 
@@ -47,6 +47,17 @@ namespace Moobot.Modules.Commands
             }
 
             return count;
+        }
+
+        public static string ReverseWords(string str)
+        {
+            var words = str.Split(' ');
+            var reversedStr = "";
+            for (int i = words.Length - 1; i >= 0; i--)
+            {
+                reversedStr += words[i] + " ";
+            }
+            return reversedStr.TrimEnd();
         }
     }
 }

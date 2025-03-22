@@ -1,13 +1,14 @@
-using Discord;
 using MooBot.Configuration;
 using MooBot.Managers.Enums;
 using MooBot.Modules.Commands.Pokemon;
-using MooBot.Modules.Handlers;
+using MooBot.Modules.Handlers.Models;
+using MooBot.Modules.Handlers.Models.AutoAssign;
 using System.Globalization;
 using System.Net;
+using System.Net.Http;
 using System.Net.Http.Json;
+using System.Text.Json;
 using System.Web;
-using static System.Runtime.InteropServices.JavaScript.JSType;
 
 namespace Moobot.Modules.Handlers
 {
@@ -100,6 +101,8 @@ namespace Moobot.Modules.Handlers
             {
                 using (var res = (HttpWebResponse)req.GetResponse())
                 {
+                    if (res.StatusCode == HttpStatusCode.TooManyRequests) return WebResponseEnum.TooManyRequests;
+
                     if (res.StatusCode != HttpStatusCode.OK) return WebResponseEnum.Error;
 
                     if (!res.ContentType.ToLower(CultureInfo.InvariantCulture).StartsWith("image/")) return WebResponseEnum.InvalidContent;
@@ -129,30 +132,53 @@ namespace Moobot.Modules.Handlers
 
             uri.Query = string.Join("&", encodedQueryStringParams);
 
-            Console.WriteLine("URL IMAGE INFO");
-            Console.WriteLine(uri.Uri);
-            Console.WriteLine(uri.Query);
-
             var httpClient = new HttpClient();
 
             try
             {
-                var searchResult = await httpClient.GetFromJsonAsync<SauceNaoSearch>(uri.Uri);
+                var response = await httpClient.GetAsync(uri.Uri);
 
-                Console.WriteLine(searchResult);
+                if (response.StatusCode == HttpStatusCode.TooManyRequests)
+                {
+                    await Task.Delay(30);
+                    response = await httpClient.GetAsync(uri.Uri);
+                }
+
+                var searchResult = await response.Content.ReadFromJsonAsync<SauceNaoSearch>();
 
                 if (searchResult.Header.Status != 0) return null;
                 if (searchResult.Results.Length == 0) return null;
 
                 return searchResult;
             }
-            catch(Exception ex)
+            catch (Exception ex)
             {
                 Console.WriteLine(ex.Message);
                 return null;
             }
-
         }
+
+        public static async Task<T?> GetJsonFromApi<T>(string url)
+        {
+            try
+            {
+                var httpClient = new HttpClient();
+
+                using var response = await httpClient.GetAsync(url);
+                response.EnsureSuccessStatusCode();
+
+                var jsonResponse = await response.Content.ReadAsStringAsync();
+                return JsonSerializer.Deserialize<T>(jsonResponse, new JsonSerializerOptions
+                {
+                    PropertyNameCaseInsensitive = true
+                });
+            }
+            catch (Exception ex)
+            {
+                Console.WriteLine(ex);
+                return default;
+            }
+        } 
 
         private static async Task<TenorSearch> GetTenorResult(IEnumerable<string> queryParams)
         {

@@ -14,6 +14,9 @@ namespace Moobot.Database.Models.Entities
         [Column("link")]
         public string Link { get; set; }
 
+        [Column("check_assignees")]
+        public bool CheckAssignees { get; set; }
+
         [Column("reminders")]
         public ICollection<Reminder> Reminders { get; set; }
     }

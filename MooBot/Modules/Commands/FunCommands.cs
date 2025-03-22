@@ -1,6 +1,6 @@
-using Discord.Commands;
 using Discord.Interactions;
 using Moobot.Modules.Handlers;
+using Moobot.Utils;
 using MooBot.Configuration;
 using MooBot.Modules.Commands.Pokemon;
 using Newtonsoft.Json;

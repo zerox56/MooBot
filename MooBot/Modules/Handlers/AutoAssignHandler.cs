@@ -11,6 +11,7 @@ using MooBot.Database.Queries;
 using MooBot.Managers.CharacterAssignment;
 using MooBot.Managers.Enums;
 using MooBot.Modules.Handlers.Models.AutoAssign;
+using OpenCvSharp.ImgHash;
 using System.Text.RegularExpressions;
 
 namespace MooBot.Modules.Handlers
@@ -235,6 +236,14 @@ namespace MooBot.Modules.Handlers
                 var assignedCharacter = assignedCharacters.Characters.FirstOrDefault(c =>
                     c.Name.ToLower() == cleanedupCharacter.ToLower() ||
                     c.Name.ToLower() == cleanedupCharacterRevered.ToLower());
+
+                if (assignedCharacter == null && !cleanedupCharacter.Contains(' '))
+                {
+                    //TODO: Temp fix. Check again with cleanedupCharacter and check every word
+                    assignedCharacter = assignedCharacters.Characters.FirstOrDefault(c =>
+                        c.Name.ToLower().StartsWith(cleanedupCharacter.ToLower()) ||
+                        c.Name.ToLower().EndsWith(cleanedupCharacter.ToLower()));
+                }
 
                 if (assignedCharacter == null) continue;
 

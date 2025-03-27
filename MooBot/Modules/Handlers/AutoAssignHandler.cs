@@ -141,10 +141,12 @@ namespace MooBot.Modules.Handlers
             float lastSimilarity = -1;
             float highestSimilarity = -1;
             var characters = new List<CharacterAssignment>();
+            var sauceNaoConfig = ApplicationConfiguration.Configuration.GetSection("SauceNao");
 
             foreach (var result in searchResult.Results)
             {
                 if (result.Data.Characters == null) continue;
+                if (result.Header.GetSimilarity() < int.Parse(sauceNaoConfig["SimilarityThreshold"])) continue;
                 if (lastSimilarity != -1 && Math.Abs(lastSimilarity - result.Header.GetSimilarity()) >= 10) continue;
 
                 foreach (var character in result.Data.Characters.Split(',').ToList())

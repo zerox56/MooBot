@@ -11,6 +11,7 @@ using MooBot.Database.Queries;
 using MooBot.Managers.CharacterAssignment;
 using MooBot.Managers.Enums;
 using MooBot.Modules.Handlers.Models.AutoAssign;
+using OpenCvSharp.ImgHash;
 using System.Text.RegularExpressions;
 
 namespace MooBot.Modules.Handlers
@@ -66,6 +67,7 @@ namespace MooBot.Modules.Handlers
             if (assignedCharacters == null)
             {
                 responseMsg.ModifyAsync(m => m.Content = "Something went wrong...");
+                PostDebugMessage(msg, "Something went wrong", validUrls);
                 return;
             }
 
@@ -122,6 +124,7 @@ namespace MooBot.Modules.Handlers
             if (StringUtils.RemoveNewLines(assigneesMsg).Trim() == "")
             {
                 responseMsg.DeleteAsync();
+                PostDebugMessage(msg, "Processed but no assignees found", validUrls);
                 return;
             }
 
@@ -141,10 +144,12 @@ namespace MooBot.Modules.Handlers
             float lastSimilarity = -1;
             float highestSimilarity = -1;
             var characters = new List<CharacterAssignment>();
+            var sauceNaoConfig = ApplicationConfiguration.Configuration.GetSection("SauceNao");
 
             foreach (var result in searchResult.Results)
             {
                 if (result.Data.Characters == null) continue;
+                if (result.Header.GetSimilarity() < int.Parse(sauceNaoConfig["SimilarityThreshold"])) continue;
                 if (lastSimilarity != -1 && Math.Abs(lastSimilarity - result.Header.GetSimilarity()) >= 10) continue;
 
                 foreach (var character in result.Data.Characters.Split(',').ToList())
@@ -231,6 +236,14 @@ namespace MooBot.Modules.Handlers
                 var assignedCharacter = assignedCharacters.Characters.FirstOrDefault(c =>
                     c.Name.ToLower() == cleanedupCharacter.ToLower() ||
                     c.Name.ToLower() == cleanedupCharacterRevered.ToLower());
+
+                if (assignedCharacter == null && !cleanedupCharacter.Contains(' '))
+                {
+                    //TODO: Temp fix. Check again with cleanedupCharacter and check every word
+                    assignedCharacter = assignedCharacters.Characters.FirstOrDefault(c =>
+                        c.Name.ToLower().StartsWith(cleanedupCharacter.ToLower()) ||
+                        c.Name.ToLower().EndsWith(cleanedupCharacter.ToLower()));
+                }
 
                 if (assignedCharacter == null) continue;
 
@@ -342,7 +355,6 @@ namespace MooBot.Modules.Handlers
             return response;
         }
 
-
         private static async Task<List<string>> CreateUrlsList(SocketMessage msg)
         {
             var urls = new List<string>();
@@ -360,6 +372,26 @@ namespace MooBot.Modules.Handlers
             urls.AddRange(contentUrls);
 
             return urls;
+        }
+
+        private static async void PostDebugMessage(SocketMessage msg, string debugMessage, List<string> ?validUrls)
+        {
+            var discordConfig = ApplicationConfiguration.Configuration.GetSection("Discord");
+            var debugChannelId = ulong.Parse(discordConfig["DebugChannelId"]);
+
+            var discordClient = ServiceManager.GetService<DiscordSocketClient>();
+            var debugChannel = await discordClient.GetChannelAsync(debugChannelId) as ISocketMessageChannel;
+
+            var guildId = (msg.Channel as SocketGuildChannel)?.Guild.Id;
+            debugMessage += $"{Environment.NewLine}https://discord.com/channels/{guildId}/{msg.Channel.Id}/{msg.Id}";
+
+            if (validUrls != null && validUrls.Count > 0)
+            {
+                debugMessage += Environment.NewLine + "Valid urls list: ";
+                validUrls.ForEach(u => debugMessage += Environment.NewLine + "- " + u);
+            }
+
+            await debugChannel.SendMessageAsync(debugMessage);
         }
     }
 }

@@ -1,10 +1,15 @@
 using Discord.Interactions;
+using Moobot.Database.Models.Entities;
+using Moobot.Database;
+using Moobot.Managers;
 using Moobot.Modules.Handlers;
 using Moobot.Utils;
 using MooBot.Configuration;
+using MooBot.Database.Models.Entities;
 using MooBot.Modules.Commands.Pokemon;
 using Newtonsoft.Json;
 using System.Text.RegularExpressions;
+using Moobot.Database.Queries;
 
 namespace Moobot.Modules.Commands
 {
@@ -203,6 +208,32 @@ namespace Moobot.Modules.Commands
 
             result = result.Remove(result.Length - 3, 3);
             await RespondAsync($"{result} = {totalResult}");
+        }
+
+        [SlashCommand("animal-fact", "Picks a random fact from chosen animal")]
+        public async Task GetAnimalFact(string animal)
+        {
+            animal = animal.ToLower().Trim();
+            //TODO: Check if animal (or emoji) is supported else fail
+            AnimalFact? animalFact = default;
+            var dbContext = ServiceManager.GetService<DatabaseContext>();
+            if (animal != "")
+            {
+                animalFact = await dbContext.AnimalFact.GetRandomAnimalFactByAnimal(animal);
+            } 
+            else
+            {
+                animalFact = await dbContext.AnimalFact.GetRandomAnimalFact();
+            }       
+
+            if (animalFact == null || animalFact == default(AnimalFact))
+            {
+                //TODO: Button to request chosen animal? will ping on requests channel
+                await RespondAsync($"I don't have any Animool facts for {animal.ToLower()}");
+            }
+
+            //TODO: Support source later
+            await RespondAsync($"Here is a random {animalFact.Animal} fact!{Environment.NewLine}{animalFact.Fact}");
         }
     }
 }

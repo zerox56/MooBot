@@ -211,7 +211,7 @@ namespace Moobot.Modules.Commands
         }
 
         [SlashCommand("animal-fact", "Picks a random fact from chosen animal")]
-        public async Task GetAnimalFact(string animal)
+        public async Task GetAnimalFact(string animal = "")
         {
             animal = animal.ToLower().Trim();
             //TODO: Check if animal (or emoji) is supported else fail
@@ -229,11 +229,19 @@ namespace Moobot.Modules.Commands
             if (animalFact == null || animalFact == default(AnimalFact))
             {
                 //TODO: Button to request chosen animal? will ping on requests channel
-                await RespondAsync($"I don't have any Animool facts for {animal.ToLower()}");
+                await RespondAsync($"I don't have any Ani**moo**l facts for {animal.ToLower()}");
             }
 
-            //TODO: Support source later
-            await RespondAsync($"Here is a random {animalFact.Animal} fact!{Environment.NewLine}{animalFact.Fact}");
+            var factEntry = await dbContext.AnimalFact.GetAnimalFactEntryNumber(animalFact);
+
+            var response = $"**{animalFact.Animal} fact #{factEntry}:**";
+            response += $"{Environment.NewLine}{animalFact.Fact}";
+
+            if (animalFact.Source != null && animalFact.Source.Trim() != "") {
+                response += $"{Environment.NewLine}-#[Source]({animalFact.Source})";
+            }
+
+            await RespondAsync(response);
         }
     }
 }

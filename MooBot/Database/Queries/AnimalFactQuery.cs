@@ -2,6 +2,7 @@
 using Moobot.Database.Models.Entities;
 using Moobot.Managers;
 using MooBot.Database.Models.Entities;
+using System.Net.NetworkInformation;
 
 namespace Moobot.Database.Queries
 {
@@ -35,6 +36,14 @@ namespace Moobot.Database.Queries
             return await animalFactSet
                 .OrderBy(af => EF.Functions.Random())
                 .FirstOrDefaultAsync();
+        }
+
+        public static async Task<int> GetAnimalFactEntryNumber(this DbSet<AnimalFact> animalFactSet, AnimalFact animalFact)
+        {
+            return await animalFactSet
+                .OrderBy(af => af.Id)
+                .Where(af => af.Id < animalFact.Id && af.Animal == animalFact.Animal)
+                .CountAsync() + 1; ;
         }
     }
 }

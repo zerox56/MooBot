@@ -7,7 +7,7 @@ namespace Moobot.Database.Configurations
     {
         public override void Configure(EntityTypeBuilder<Media> builder)
         {
-            builder.Property(m => m.File);
+            builder.Property(m => m.Url);
 
             base.Configure(builder);
         }

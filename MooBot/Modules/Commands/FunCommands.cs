@@ -220,16 +220,17 @@ namespace Moobot.Modules.Commands
             if (animal != "")
             {
                 animalFact = await dbContext.AnimalFact.GetRandomAnimalFactByAnimal(animal);
-            } 
+            }
             else
             {
                 animalFact = await dbContext.AnimalFact.GetRandomAnimalFact();
-            }       
+            }
 
             if (animalFact == null || animalFact == default(AnimalFact))
             {
                 //TODO: Button to request chosen animal? will ping on requests channel
                 await RespondAsync($"I don't have any Ani**moo**l facts for {animal.ToLower()}");
+                return;
             }
 
             var factEntry = await dbContext.AnimalFact.GetAnimalFactEntryNumber(animalFact);
@@ -237,11 +238,47 @@ namespace Moobot.Modules.Commands
             var response = $"**{animalFact.Animal} fact #{factEntry}:**";
             response += $"{Environment.NewLine}{animalFact.Fact}";
 
-            if (animalFact.Source != null && animalFact.Source.Trim() != "") {
+            if (animalFact.Source != null && animalFact.Source.Trim() != "")
+            {
                 response += $"{Environment.NewLine}-#[Source]({animalFact.Source})";
             }
 
             await RespondAsync(response);
+        }
+
+        [SlashCommand("media", "Picks from a list of media based on default emoji")]
+        public async Task GetRandomMedia(string input)
+        {
+            input = input.ToLower().Trim();
+            if (input == "") return;
+
+            var dbContext = ServiceManager.GetService<DatabaseContext>();
+            Emoji? emoji = await dbContext.Emoji.GetEmojiById(input);
+            if (emoji == null || emoji == default(Emoji))
+            {
+                await RespondAsync($"No media for the emoji... yet?");
+                return;
+            }
+
+            EmojiMedia? emojiMedia = await dbContext.EmojiMedia.GetRandomEmojiMediaByEmoji(emoji.Id);
+            if (emojiMedia == null || emojiMedia == default(EmojiMedia))
+            {
+                await RespondAsync($"No media for the emoji... yet?");
+                return;
+            }
+
+            Media? media = await dbContext.Media.GetMediaById(emojiMedia.MediaId);
+            if (media == null || media == default(Media))
+            {
+                //It shouldn't reach this place
+                await RespondAsync($"No media for the emoji... yet?");
+                return;
+            }
+
+            var discordConfig = ApplicationConfiguration.Configuration.GetSection("Discord");
+            var mediaChannelId = ulong.Parse(discordConfig["MediaChannelId"]);
+
+            await RespondAsync(media.Url);
         }
     }
 }

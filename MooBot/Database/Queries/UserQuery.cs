@@ -14,6 +14,7 @@ namespace MooBot.Database.Queries
             User User = await UserSet.Where(u => u.Id == UserId).FirstOrDefaultAsync();
             var dbContext = ServiceManager.GetService<DatabaseContext>();
 
+            //TODO: Revision
             if (User != default(User) || !createIfNotExists)
             {
                 await dbContext.Entry(User).Collection(u => u.UserReminders).LoadAsync();

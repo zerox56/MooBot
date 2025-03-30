@@ -45,5 +45,16 @@ namespace Moobot.Database.Queries
                 .Where(af => af.Id < animalFact.Id && af.Animal == animalFact.Animal)
                 .CountAsync() + 1; ;
         }
+
+        public static async Task<(int, int)> GetAnimalFactCounts(this DbSet<AnimalFact> animalFactSet)
+        {
+            var amountOfFacts = await animalFactSet.CountAsync();
+            var uniqueAnimals = await animalFactSet
+                .Select(af => af.Animal)
+                .Distinct()
+                .CountAsync();
+
+            return (amountOfFacts, uniqueAnimals);
+        }
     }
 }

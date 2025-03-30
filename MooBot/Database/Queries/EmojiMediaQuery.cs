@@ -42,6 +42,20 @@ namespace Moobot.Database.Queries
                 .FirstOrDefaultAsync();
         }
 
+        public static async Task<(int, int)> GetEmojiMediaCounts(this DbSet<EmojiMedia> emojiMediaSet)
+        {
+            var amountOfMedia = await emojiMediaSet
+                .Select(em => em.MediaId)
+                .Distinct()
+                .CountAsync();
+            var uniqueEmojis = await emojiMediaSet
+                .Select(em => em.EmojiId)
+                .Distinct()
+                .CountAsync();
+
+            return (amountOfMedia, uniqueEmojis);
+        }
+
         public static async Task<dynamic> DeleteEmojiMediaByIds(this DbSet<EmojiMedia> emojiMediaSet, string emojiId, ulong mediaId)
         {
             EmojiMedia emojiMedia = await emojiMediaSet.Where(em => em.EmojiId == emojiId && em.MediaId == mediaId).FirstOrDefaultAsync();

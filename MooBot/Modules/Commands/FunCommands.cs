@@ -280,5 +280,17 @@ namespace Moobot.Modules.Commands
 
             await RespondAsync(media.Url);
         }
+
+        [SlashCommand("media-list", "Shows a list of supported emojis with content")]
+        public async Task GetEmojisList()
+        {
+            var dbContext = ServiceManager.GetService<DatabaseContext>();
+            List<Emoji> emojis = await dbContext.Emoji.GetAllEmojis();
+
+            var response = $"Here's a list of supported emojis!{Environment.NewLine}";
+            emojis.ForEach(e => response += e.Id);
+
+            await RespondAsync(response);
+        }
     }
 }

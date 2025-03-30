@@ -24,5 +24,10 @@ namespace Moobot.Database.Queries
 
             return await emojiSet.Where(e => e.Id == emojiId).FirstOrDefaultAsync();
         }
+
+        public static async Task<dynamic> GetAllEmojis(this DbSet<Emoji> emojiSet)
+        {
+            return await emojiSet.ToListAsync();
+        }
     }
 }

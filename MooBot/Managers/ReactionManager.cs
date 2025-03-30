@@ -5,6 +5,7 @@ using Moobot.Managers;
 using MooBot.Configuration;
 using Moobot.Database.Queries;
 using Moobot.Database.Models.Entities;
+using Moobot.Utils;
 
 namespace MooBot.Managers
 {
@@ -33,6 +34,8 @@ namespace MooBot.Managers
 
             if (channel.Id != mediaChannelId) return;
 
+            var emojiUnicode = StringUtils.ConvertStringToUnicode(reaction.Emote.Name);
+
             //Add entries for all attachments in database with reaction, or append if reaction is already there
             var dbContext = ServiceManager.GetService<DatabaseContext>();
             foreach (var attachment in msg.Attachments)
@@ -40,7 +43,7 @@ namespace MooBot.Managers
                 if (removeEntry)
                 {
                     await dbContext.Media.DeleteMediaById(attachment.Id);
-                    await dbContext.EmojiMedia.DeleteEmojiMediaByIds(reaction.Emote.Name, attachment.Id);
+                    await dbContext.EmojiMedia.DeleteEmojiMediaByIds(emojiUnicode, attachment.Id);
                 }
                 else
                 {
@@ -49,10 +52,10 @@ namespace MooBot.Managers
                         Url = attachment.Url
                     };
 
-                    await dbContext.Emoji.GetEmojiById(reaction.Emote.Name, true);
+                    await dbContext.Emoji.GetEmojiById(emojiUnicode, true);
                     media = await dbContext.Media.GetMediaByObject(media, true);
 
-                    await dbContext.EmojiMedia.CreateEmojiMediaByIds(reaction.Emote.Name, media.Id);
+                    await dbContext.EmojiMedia.CreateEmojiMediaByIds(emojiUnicode, media.Id);
                 }
             }
         }

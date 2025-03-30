@@ -70,5 +70,16 @@ namespace Moobot.Utils
         {
             return str.Replace(Environment.NewLine, "");
         } 
+
+        public static string ConvertStringToUnicode(string str)
+        {
+            return string.Concat(str.Select(c => $"U+{((int)c):X4} "));
+        }
+
+        public static string ConvertUnicodeToString(string str)
+        {
+            int codepoint = int.Parse(str.Replace("U+", ""), NumberStyles.HexNumber);
+            return char.ConvertFromUtf32(codepoint);
+        }
     }
 }

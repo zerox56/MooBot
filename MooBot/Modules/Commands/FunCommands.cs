@@ -1,10 +1,15 @@
 using Discord.Interactions;
+using Moobot.Database.Models.Entities;
+using Moobot.Database;
+using Moobot.Managers;
 using Moobot.Modules.Handlers;
 using Moobot.Utils;
 using MooBot.Configuration;
+using MooBot.Database.Models.Entities;
 using MooBot.Modules.Commands.Pokemon;
 using Newtonsoft.Json;
 using System.Text.RegularExpressions;
+using Moobot.Database.Queries;
 
 namespace Moobot.Modules.Commands
 {
@@ -203,6 +208,77 @@ namespace Moobot.Modules.Commands
 
             result = result.Remove(result.Length - 3, 3);
             await RespondAsync($"{result} = {totalResult}");
+        }
+
+        [SlashCommand("animal-fact", "Picks a random fact from chosen animal")]
+        public async Task GetAnimalFact(string animal = "")
+        {
+            animal = animal.ToLower().Trim();
+            //TODO: Check if animal (or emoji) is supported else fail
+            AnimalFact? animalFact = default;
+            var dbContext = ServiceManager.GetService<DatabaseContext>();
+            if (animal != "")
+            {
+                animalFact = await dbContext.AnimalFact.GetRandomAnimalFactByAnimal(animal);
+            }
+            else
+            {
+                animalFact = await dbContext.AnimalFact.GetRandomAnimalFact();
+            }
+
+            if (animalFact == null || animalFact == default(AnimalFact))
+            {
+                //TODO: Button to request chosen animal? will ping on requests channel
+                await RespondAsync($"I don't have any Ani**moo**l facts for {animal.ToLower()}");
+                return;
+            }
+
+            var factEntry = await dbContext.AnimalFact.GetAnimalFactEntryNumber(animalFact);
+
+            var response = $"**{animalFact.Animal} fact #{factEntry}:**";
+            response += $"{Environment.NewLine}{animalFact.Fact}";
+
+            if (animalFact.Source != null && animalFact.Source.Trim() != "")
+            {
+                response += $"{Environment.NewLine}-#[Source]({animalFact.Source})";
+            }
+
+            await RespondAsync(response);
+        }
+
+        [SlashCommand("media", "Picks from a list of media based on default emoji")]
+        public async Task GetRandomMedia(string emoji)
+        {
+            emoji = emoji.ToLower().Trim();
+            if (emoji == "") return;
+
+            var dbContext = ServiceManager.GetService<DatabaseContext>();
+            Emoji? emojiObj = await dbContext.Emoji.GetEmojiById(emoji);
+            if (emojiObj == null || emojiObj == default(Emoji))
+            {
+                await RespondAsync($"No media for the emoji... yet?");
+                return;
+            }
+
+            EmojiMedia? emojiMedia = await dbContext.EmojiMedia.GetRandomEmojiMediaByEmoji(emojiObj.Id);
+            if (emojiMedia == null || emojiMedia == default(EmojiMedia))
+            {
+                await RespondAsync($"No media for the emoji... yet?");
+                return;
+            }
+
+            Media? media = await dbContext.Media.GetMediaById(emojiMedia.MediaId);
+            if (media == null || media == default(Media))
+            {
+                //It shouldn't reach this place
+                await RespondAsync($"No media for the emoji... yet?");
+                return;
+            }
+
+            var discordConfig = ApplicationConfiguration.Configuration.GetSection("Discord");
+            var mediaChannelId = ulong.Parse(discordConfig["MediaChannelId"]);
+
+            await RespondAsync(media.Url);
         }
     }
 }

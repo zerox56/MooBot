@@ -1,9 +1,11 @@
+using System.ComponentModel;
 using System.Reflection;
 using System.Text.RegularExpressions;
 using Discord;
 using Discord.Interactions;
 using Discord.WebSocket;
 using Moobot.Modules.Commands;
+using MooBot.Modules.Commands;
 
 namespace Moobot.Managers
 {
@@ -96,6 +98,9 @@ namespace Moobot.Managers
                         break;
                     case "addUpdateReminderGif":
                         await ReminderCommands.UpdateGifReminderFollowUp(modal, customIdNumber);
+                        break;
+                    case "addAnimalFact":
+                        await AdminCommands.AddAnimalFactFollowUp(modal);
                         break;
                     default:
                         Console.WriteLine($"Uncaught case {modal.Data.CustomId} retrieved");

@@ -102,6 +102,9 @@ namespace Moobot
 
             _client.MessageReceived += MessageManager.OnMessageReceived;
 
+            _client.ReactionAdded += ReactionManager.OnReactionAdded;
+            _client.ReactionRemoved += ReactionManager.OnReactionRemoved;
+
             await _client.LoginAsync(TokenType.Bot, discordConfig["Token"]);
             await _client.StartAsync();
 

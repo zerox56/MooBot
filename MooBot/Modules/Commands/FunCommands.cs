@@ -247,20 +247,20 @@ namespace Moobot.Modules.Commands
         }
 
         [SlashCommand("media", "Picks from a list of media based on default emoji")]
-        public async Task GetRandomMedia(string input)
+        public async Task GetRandomMedia(string emoji)
         {
-            input = input.ToLower().Trim();
-            if (input == "") return;
+            emoji = emoji.ToLower().Trim();
+            if (emoji == "") return;
 
             var dbContext = ServiceManager.GetService<DatabaseContext>();
-            Emoji? emoji = await dbContext.Emoji.GetEmojiById(input);
-            if (emoji == null || emoji == default(Emoji))
+            Emoji? emojiObj = await dbContext.Emoji.GetEmojiById(emoji);
+            if (emojiObj == null || emojiObj == default(Emoji))
             {
                 await RespondAsync($"No media for the emoji... yet?");
                 return;
             }
 
-            EmojiMedia? emojiMedia = await dbContext.EmojiMedia.GetRandomEmojiMediaByEmoji(emoji.Id);
+            EmojiMedia? emojiMedia = await dbContext.EmojiMedia.GetRandomEmojiMediaByEmoji(emojiObj.Id);
             if (emojiMedia == null || emojiMedia == default(EmojiMedia))
             {
                 await RespondAsync($"No media for the emoji... yet?");

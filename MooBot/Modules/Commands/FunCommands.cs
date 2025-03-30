@@ -252,6 +252,8 @@ namespace Moobot.Modules.Commands
             emoji = emoji.ToLower().Trim();
             if (emoji == "") return;
 
+            emoji = StringUtils.ConvertStringToUnicode(emoji);
+
             var dbContext = ServiceManager.GetService<DatabaseContext>();
             Emoji? emojiObj = await dbContext.Emoji.GetEmojiById(emoji);
             if (emojiObj == null || emojiObj == default(Emoji))
@@ -288,7 +290,7 @@ namespace Moobot.Modules.Commands
             List<Emoji> emojis = await dbContext.Emoji.GetAllEmojis();
 
             var response = $"Here's a list of supported emojis!{Environment.NewLine}";
-            emojis.ForEach(e => response += e.Id);
+            emojis.ForEach(e => response += StringUtils.ConvertUnicodeToString(e.Id));
 
             await RespondAsync(response);
         }

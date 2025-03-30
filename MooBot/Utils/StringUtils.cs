@@ -73,13 +73,21 @@ namespace Moobot.Utils
 
         public static string ConvertStringToUnicode(string str)
         {
-            return string.Concat(str.Select(c => $"U+{((int)c):X4} "));
+            return string.Concat(str.Select(c => $"U+{((int)c):X4} ")).Trim();
         }
 
         public static string ConvertUnicodeToString(string str)
         {
-            int codepoint = int.Parse(str.Replace("U+", ""), NumberStyles.HexNumber);
-            return char.ConvertFromUtf32(codepoint);
+            str = str.Replace("U+", "");
+            if (str.Contains(" "))
+            {
+                return string.Concat(str.Split(' ').Select(hex => (char)int.Parse(hex, NumberStyles.HexNumber)));
+            }
+            else
+            {
+                int codepoint = int.Parse(str, NumberStyles.HexNumber);
+                return char.ConvertFromUtf32(codepoint);
+            }
         }
     }
 }

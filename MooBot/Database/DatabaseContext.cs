@@ -25,6 +25,7 @@ namespace Moobot.Database
         public virtual DbSet<Emoji> Emoji { get; set; }
         public virtual DbSet<Media> Media { get; set; }
         public virtual DbSet<EmojiMedia> EmojiMedia { get; set; }
+        public virtual DbSet<DomainGroup> DomainGroup { get; set; }
 
         protected override void OnModelCreating(ModelBuilder builder)
         {
@@ -39,6 +40,7 @@ namespace Moobot.Database
             builder.ApplyConfiguration(new EmojiConfiguration());
             builder.ApplyConfiguration(new MediaConfiguration());
             builder.ApplyConfiguration(new EmojiMediaConfiguration());
+            builder.ApplyConfiguration(new DomainGroupConfiguration());
         }
 
         public override int SaveChanges()

@@ -20,7 +20,7 @@ namespace MooBot.Modules.Handlers
         public static async Task AutoAssignCharacters(SocketMessage msg)
         {
             //Check if attachments, embeds or urls
-            var urls = await CreateUrlsList(msg);
+            var (urls, containsSpoiler) = await CreateUrlsList(msg);
             if (urls.Count == 0) return;
 
             // TODO: See if multithreading helps with speed
@@ -126,8 +126,16 @@ namespace MooBot.Modules.Handlers
                 PostDebugMessage(msg, "Processed but no assignees found", validUrls);
                 return;
             }
-
-            responseMsg.ModifyAsync(m => m.Content = assigneesMsg);
+            
+            if (containsSpoiler)
+            {
+                responseMsg.ModifyAsync(m => m.Content = $"||{assigneesMsg}||");
+            } 
+            else
+            {
+                responseMsg.ModifyAsync(m => m.Content = assigneesMsg);
+            }
+                
 
             shortRemainingData.Value = lastShortRemaining.ToString();
             shortRemainingData.Type = "int";
@@ -381,23 +389,23 @@ namespace MooBot.Modules.Handlers
             return response;
         }
 
-        private static async Task<List<string>> CreateUrlsList(SocketMessage msg)
+        private static async Task<(List<string>, bool)> CreateUrlsList(SocketMessage msg)
         {
             var urls = new List<string>();
             var contentUrls = StringUtils.GetAllUrls(msg.Content);
 
             if (msg.Attachments.Count == 0 && msg.Embeds.Count == 0 && contentUrls.Length == 0)
             {
-                return urls;
+                return (urls, false);
             }
 
-            var hasSpoilers = StringUtils.CountOccurrences(msg.Content, "||") >= 2 || msg.Attachments.Any(a => a.IsSpoiler());
+            var containsSpoiler = StringUtils.CountOccurrences(msg.Content, "||") >= 2 || msg.Attachments.Any(a => a.IsSpoiler());
 
             urls.AddRange(msg.Attachments.Select(a => a.Url));
             urls.AddRange(msg.Embeds.Select(e => e.Url));
             urls.AddRange(contentUrls);
 
-            return urls;
+            return (urls, containsSpoiler);
         }
 
         private static async void PostDebugMessage(SocketMessage msg, string debugMessage, List<string> ?validUrls)

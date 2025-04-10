@@ -11,7 +11,6 @@ using MooBot.Database.Queries;
 using MooBot.Managers.CharacterAssignment;
 using MooBot.Managers.Enums;
 using MooBot.Modules.Handlers.Models.AutoAssign;
-using OpenCvSharp.ImgHash;
 using System.Text.RegularExpressions;
 
 namespace MooBot.Modules.Handlers
@@ -21,7 +20,7 @@ namespace MooBot.Modules.Handlers
         public static async Task AutoAssignCharacters(SocketMessage msg)
         {
             //Check if attachments, embeds or urls
-            var urls = await CreateUrlsList(msg);
+            var (urls, containsSpoiler) = await CreateUrlsList(msg);
             if (urls.Count == 0) return;
 
             // TODO: See if multithreading helps with speed
@@ -127,8 +126,16 @@ namespace MooBot.Modules.Handlers
                 PostDebugMessage(msg, "Processed but no assignees found", validUrls);
                 return;
             }
-
-            responseMsg.ModifyAsync(m => m.Content = assigneesMsg);
+            
+            if (containsSpoiler)
+            {
+                responseMsg.ModifyAsync(m => m.Content = $"||{assigneesMsg}||");
+            } 
+            else
+            {
+                responseMsg.ModifyAsync(m => m.Content = assigneesMsg);
+            }
+                
 
             shortRemainingData.Value = lastShortRemaining.ToString();
             shortRemainingData.Type = "int";
@@ -229,20 +236,47 @@ namespace MooBot.Modules.Handlers
 
             foreach (var characterAssignment in characterAssignments)
             {
-                //TODO: Add some potentional conversion. x series or x character name might be named slightly different on the faelicapedia.
-                var cleanedupCharacter = Regex.Replace(characterAssignment.Name, @"\s*\(.*?\)", "").Trim();
-                var cleanedupCharacterRevered = StringUtils.ReverseWords(cleanedupCharacter);
+                var cleanedupCharacter = Regex.Replace(characterAssignment.Name, @"\([^)]*\)", "").Trim().ToLower();
+                var cleanedupCharacterRevered = StringUtils.ReverseWords(cleanedupCharacter).ToLower();
+                var characterNameSplit = cleanedupCharacter.Split(' ', StringSplitOptions.RemoveEmptyEntries);
 
-                var assignedCharacter = assignedCharacters.Characters.FirstOrDefault(c =>
-                    c.Name.ToLower() == cleanedupCharacter.ToLower() ||
-                    c.Name.ToLower() == cleanedupCharacterRevered.ToLower());
-
-                if (assignedCharacter == null && !cleanedupCharacter.Contains(' '))
+                var checkCharacterMatch = new List<Func<Character?>>()
                 {
-                    //TODO: Temp fix. Check again with cleanedupCharacter and check every word
-                    assignedCharacter = assignedCharacters.Characters.FirstOrDefault(c =>
-                        c.Name.ToLower().StartsWith(cleanedupCharacter.ToLower()) ||
-                        c.Name.ToLower().EndsWith(cleanedupCharacter.ToLower()));
+                    // Check full name + (franchise)
+                    () => assignedCharacters.Characters.FirstOrDefault(c =>
+                        c.Name.ToLower().StartsWith(cleanedupCharacter) &&
+                        c.FranchiseName.ToLower().Contains(characterAssignment.Series.ToLower())),
+                    // Check reversed full name + (franchise)
+                    () => assignedCharacters.Characters.FirstOrDefault(c =>
+                        c.Name.ToLower().StartsWith(cleanedupCharacterRevered) &&
+                        c.FranchiseName.ToLower().Contains(characterAssignment.Series.ToLower())),
+                    // Check full name
+                    () => assignedCharacters.Characters.FirstOrDefault(c => c.Name.ToLower() == cleanedupCharacter),
+                    // Check reversed full name
+                    () => assignedCharacters.Characters.FirstOrDefault(c => c.Name.ToLower() == cleanedupCharacterRevered),
+                    // Check part name + (franchise)
+                    () => assignedCharacters.Characters.FirstOrDefault(c =>
+                        characterNameSplit.Any(cn =>
+                            c.Name.ToLower().StartsWith(cn) &&
+                            c.FranchiseName.ToLower().Contains(characterAssignment.Series.ToLower()))
+                        ),
+                    // Check part name + 
+                    () => assignedCharacters.Characters.FirstOrDefault(c =>
+                        c.Name.Split(' ', StringSplitOptions.RemoveEmptyEntries).Any(cSplit =>
+                            cSplit.ToLower().StartsWith(cleanedupCharacter)
+                        ) && c.FranchiseName.ToLower().Contains(characterAssignment.Series.ToLower())
+                        ),
+                };
+
+                Character assignedCharacter = null;
+
+                foreach (var check in checkCharacterMatch)
+                {
+                    var result = check();
+                    if (result == null) continue;
+
+                    assignedCharacter = result;
+                    break;
                 }
 
                 if (assignedCharacter == null) continue;
@@ -355,23 +389,23 @@ namespace MooBot.Modules.Handlers
             return response;
         }
 
-        private static async Task<List<string>> CreateUrlsList(SocketMessage msg)
+        private static async Task<(List<string>, bool)> CreateUrlsList(SocketMessage msg)
         {
             var urls = new List<string>();
             var contentUrls = StringUtils.GetAllUrls(msg.Content);
 
             if (msg.Attachments.Count == 0 && msg.Embeds.Count == 0 && contentUrls.Length == 0)
             {
-                return urls;
+                return (urls, false);
             }
 
-            var hasSpoilers = StringUtils.CountOccurrences(msg.Content, "||") >= 2 || msg.Attachments.Any(a => a.IsSpoiler());
+            var containsSpoiler = StringUtils.CountOccurrences(msg.Content, "||") >= 2 || msg.Attachments.Any(a => a.IsSpoiler());
 
             urls.AddRange(msg.Attachments.Select(a => a.Url));
             urls.AddRange(msg.Embeds.Select(e => e.Url));
             urls.AddRange(contentUrls);
 
-            return urls;
+            return (urls, containsSpoiler);
         }
 
         private static async void PostDebugMessage(SocketMessage msg, string debugMessage, List<string> ?validUrls)

@@ -45,6 +45,8 @@ namespace MooBot.Modules.Handlers
                 urlsToCheck.AddRange(await GetImageUrlsFromSupportedSites(url));
             }
 
+            urlsToCheck = urlsToCheck.Distinct().ToList();
+
             foreach (var url in urlsToCheck)
             {
                 var isValidImage = await WebHandler.CheckValidImage(url);

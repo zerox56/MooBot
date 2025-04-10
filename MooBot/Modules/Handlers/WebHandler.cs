@@ -1,4 +1,5 @@
 using MooBot.Configuration;
+using MooBot.Managers.CharacterAssignment;
 using MooBot.Managers.Enums;
 using MooBot.Modules.Commands.Pokemon;
 using MooBot.Modules.Handlers.Models;
@@ -8,6 +9,7 @@ using System.Net;
 using System.Net.Http;
 using System.Net.Http.Json;
 using System.Text.Json;
+using System.Text.RegularExpressions;
 using System.Web;
 
 namespace Moobot.Modules.Handlers
@@ -158,11 +160,18 @@ namespace Moobot.Modules.Handlers
             }
         }
 
-        public static async Task<T?> GetJsonFromApi<T>(string url)
+        public static async Task<T?> GetJsonFromApi<T>(string url, bool spoof = false)
         {
             try
             {
                 var httpClient = new HttpClient();
+
+                if (spoof)
+                {
+                    httpClient.DefaultRequestHeaders.Add("User-Agent", "Mozilla/5.0 (Windows NT 10.0; Win64; x64)");
+                    httpClient.DefaultRequestHeaders.Add("Accept", "application/json");
+                    httpClient.DefaultRequestHeaders.Add("Referer", "https://fxtwitter.com/");
+                }
 
                 using var response = await httpClient.GetAsync(url);
                 response.EnsureSuccessStatusCode();
@@ -178,7 +187,7 @@ namespace Moobot.Modules.Handlers
                 Console.WriteLine(ex);
                 return default;
             }
-        } 
+        }
 
         private static async Task<TenorSearch> GetTenorResult(IEnumerable<string> queryParams)
         {

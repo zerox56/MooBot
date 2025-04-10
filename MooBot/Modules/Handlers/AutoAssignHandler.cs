@@ -11,6 +11,8 @@ using MooBot.Database.Queries;
 using MooBot.Managers.CharacterAssignment;
 using MooBot.Managers.Enums;
 using MooBot.Modules.Handlers.Models.AutoAssign;
+using MooBot.Modules.Handlers.Models.Domains;
+using System;
 using System.Text.RegularExpressions;
 
 namespace MooBot.Modules.Handlers
@@ -31,6 +33,7 @@ namespace MooBot.Modules.Handlers
 
             var responseMsg = await msg.Channel.SendMessageAsync("Processing imags...");
 
+            var urlsToCheck = new List<string>();
             var validUrls = new List<string>();
             var hasTooLargeImage = false;
             var invalidImage = false;
@@ -38,6 +41,11 @@ namespace MooBot.Modules.Handlers
             var lastLongRemaining = 0;
 
             foreach (var url in urls)
+            {
+                urlsToCheck.AddRange(await GetImageUrlsFromSupportedSites(url));
+            }
+
+            foreach (var url in urlsToCheck)
             {
                 var isValidImage = await WebHandler.CheckValidImage(url);
 
@@ -144,6 +152,45 @@ namespace MooBot.Modules.Handlers
             longRemainingData.Value = lastLongRemaining.ToString();
             longRemainingData.Type = "int";
             await dbContext.SaveChangesAsync();
+        }
+
+        private static async Task<List<string>> GetImageUrlsFromSupportedSites(string url)
+        {
+            if (!Uri.TryCreate(url, UriKind.Absolute, out var uri)) return new List<string>() { url };
+
+            var host = uri.Host.StartsWith("www.") ? uri.Host[4..] : uri.Host;
+
+            var dbContext = ServiceManager.GetService<DatabaseContext>();
+            DomainGroup domainGroup = await dbContext.DomainGroup.GetDomainGroupById(host);
+
+            if (domainGroup == default(DomainGroup)) return new List<string>() { url };
+
+            switch (domainGroup.Group)
+            {
+                case DomainGroupEnum.Twitter:
+                    var match = Regex.Match(uri.AbsolutePath, @"^/([^/]+)/status/(\d+)");
+                    if (!match.Success)
+                        return null;
+
+                    var username = match.Groups[1].Value;
+                    var tweetId = match.Groups[2].Value;
+
+                    var fxtwitterApiUrl = $"https://api.fxtwitter.com/{username}/status/{tweetId}";
+                    TweetResponse? tweetResponse = await WebHandler.GetJsonFromApi<TweetResponse>(fxtwitterApiUrl, true);
+                    if (tweetResponse == null || tweetResponse.Code != 200) return new List<string>() { url };
+                    if (tweetResponse.Tweet.Media.Photos == null || tweetResponse.Tweet.Media.Photos.Count == 0) return new List<string>() { url };
+
+                    var urls = new List<string>();
+                    foreach(var photo in tweetResponse.Tweet.Media.Photos)
+                    {
+                        urls.Add(photo.Url);
+                    }
+
+                    return urls;
+                default:
+                    // Unsupported for now
+                    return new List<string>() { url };
+            }
         }
 
         private static async Task<List<CharacterAssignment>> GetCharactersList(SauceNaoSearch searchResult)

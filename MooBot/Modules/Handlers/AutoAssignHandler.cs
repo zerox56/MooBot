@@ -1,4 +1,5 @@
 ﻿using Discord;
+using Discord.Rest;
 using Discord.WebSocket;
 using Moobot.Database;
 using Moobot.Database.Models.Entities;
@@ -32,6 +33,7 @@ namespace MooBot.Modules.Handlers
             // TODO: Update Database only once. Maybe do an extra update if a limit is reached
 
             var responseMsg = await msg.Channel.SendMessageAsync("Processing imags...");
+            var debugMsg = await PostInitialDebugMessage(msg);
 
             var urlsToCheck = new List<string>();
             var validUrls = new List<string>();
@@ -69,6 +71,7 @@ namespace MooBot.Modules.Handlers
             {
                 //responseMsg.ModifyAsync(m => m.Content = "No images found Moo can read...");
                 responseMsg.DeleteAsync();
+                UpdateDebugMessage(debugMsg, "No valid urls found");
                 return;
             }
 
@@ -76,7 +79,7 @@ namespace MooBot.Modules.Handlers
             if (assignedCharacters == null)
             {
                 responseMsg.ModifyAsync(m => m.Content = "Something went wrong...");
-                PostDebugMessage(msg, "Something went wrong", validUrls);
+                UpdateDebugMessage(debugMsg, "Something went wrong");
                 return;
             }
 
@@ -112,6 +115,7 @@ namespace MooBot.Modules.Handlers
                     if (lastLongRemaining + validUrls.Count > 100)
                     {
                         await msg.Channel.SendMessageAsync("Moo can't process images, reached the daily timeout...");
+                        UpdateDebugMessage(debugMsg, "Reached daily timeout");
                         return;
                     }
                     await Task.Delay(TimeSpan.FromSeconds(30));
@@ -125,7 +129,10 @@ namespace MooBot.Modules.Handlers
                 }
 
                 var characterAssignments = await GetCharactersList(result);
+                UpdateDebugMessage(debugMsg, "=== New image ===");
+                await UpdateDebugMessageWithCharacters(debugMsg, characterAssignments, "Original list: ");
                 characterAssignments = await GetAssignedUsers(assignedCharacters, characterAssignments);
+                await UpdateDebugMessageWithCharacters(debugMsg, characterAssignments, "Final list: ");
 
                 assigneesMsg += await CreateResponseMessage(characterAssignments) + Environment.NewLine;
             }
@@ -133,7 +140,7 @@ namespace MooBot.Modules.Handlers
             if (StringUtils.RemoveNewLines(assigneesMsg).Trim() == "")
             {
                 responseMsg.DeleteAsync();
-                PostDebugMessage(msg, "Processed but no assignees found", validUrls);
+                UpdateDebugMessage(debugMsg, "Processed but no assignees found");
                 return;
             }
             
@@ -460,24 +467,42 @@ namespace MooBot.Modules.Handlers
             return (urls, containsSpoiler);
         }
 
-        private static async void PostDebugMessage(SocketMessage msg, string debugMessage, List<string> ?validUrls)
+        // Debug methods
+        private static async Task<string> GetGuildMessageIdFromMessage(SocketMessage msg)
         {
+            var guildId = (msg.Channel as SocketGuildChannel)?.Guild.Id;
+            return $"https://discord.com/channels/{guildId}/{msg.Channel.Id}/{msg.Id}";
+        }
+
+        private static async Task<RestUserMessage> PostInitialDebugMessage(SocketMessage msg) {
             var discordConfig = ApplicationConfiguration.Configuration.GetSection("Discord");
             var debugChannelId = ulong.Parse(discordConfig["DebugChannelId"]);
 
             var discordClient = ServiceManager.GetService<DiscordSocketClient>();
             var debugChannel = await discordClient.GetChannelAsync(debugChannelId) as ISocketMessageChannel;
 
-            var guildId = (msg.Channel as SocketGuildChannel)?.Guild.Id;
-            debugMessage += $"{Environment.NewLine}https://discord.com/channels/{guildId}/{msg.Channel.Id}/{msg.Id}";
+            var fullMessageId = await GetGuildMessageIdFromMessage(msg);
 
-            if (validUrls != null && validUrls.Count > 0)
+            var debugMessage = "Processing result from message:" + Environment.NewLine + fullMessageId;
+
+            return await debugChannel.SendMessageAsync(debugMessage);
+        }
+
+        private static async Task UpdateDebugMessage(RestUserMessage debugMsg, string debugText)
+        {
+            debugMsg.ModifyAsync(msg => {
+                msg.Content = debugMsg.Content + Environment.NewLine + debugText;
+            });
+        }
+
+        private static async Task UpdateDebugMessageWithCharacters(RestUserMessage msg, List<CharacterAssignment> characterAssignments, string debugText)
+        {
+            if (characterAssignments != null && characterAssignments.Count > 0)
             {
-                debugMessage += Environment.NewLine + "Valid urls list: ";
-                validUrls.ForEach(u => debugMessage += Environment.NewLine + "- " + u);
+                characterAssignments.ForEach(ca => debugText += ca.Name + ", ");
             }
 
-            await debugChannel.SendMessageAsync(debugMessage);
+            UpdateDebugMessage(msg, debugText);
         }
     }
 }

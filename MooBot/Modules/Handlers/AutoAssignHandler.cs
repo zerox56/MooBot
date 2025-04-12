@@ -210,7 +210,10 @@ namespace MooBot.Modules.Handlers
 
                 foreach (var character in result.Data.Characters.Split(',').ToList())
                 {
-                    var characterAssignment = new CharacterAssignment { Name = character.Trim(), Series = result.Data.Material };
+                    var characterName = character.Trim();
+                    if (characterName == "") continue;
+
+                    var characterAssignment = new CharacterAssignment { Name = characterName, Series = result.Data.Material };
                     characters.Add(characterAssignment);
                 }
 

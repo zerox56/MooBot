@@ -300,9 +300,9 @@ namespace MooBot.Modules.Handlers
                         c.Name.ToLower().StartsWith(cleanedupCharacterRevered) &&
                         c.FranchiseName.ToLower().Contains(characterAssignment.Series.ToLower())),
                     // Check full name
-                    () => assignedCharacters.Characters.FirstOrDefault(c => c.Name.ToLower() == cleanedupCharacter),
+                    () => assignedCharacters.Characters.FirstOrDefault(c => c.Name.ToLower() == characterAssignment.Name),
                     // Check reversed full name
-                    () => assignedCharacters.Characters.FirstOrDefault(c => c.Name.ToLower() == cleanedupCharacterRevered),
+                    () => assignedCharacters.Characters.FirstOrDefault(c => c.Name.ToLower() == StringUtils.ReverseWords(characterAssignment.Name).ToLower()),
                     // Check part name + (franchise)
                     () => assignedCharacters.Characters.FirstOrDefault(c =>
                         characterNameSplit.Any(cn =>

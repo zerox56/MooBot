@@ -76,21 +76,9 @@ namespace MooBot.Modules.Commands
                 var characterIndex = new Random().Next(charactersList.Count);
                 Character character = charactersList[characterIndex];
 
-                var cleanedCharacter = character.Name.Trim().Replace(" ", "_");
+                List<Rule34Result> rule34Results = await GetImageFromCharacter(character, apiUri);
 
-                var queryParams = new Dictionary<string, string>() {
-                    { "page", "dapi" },
-                    { "s", "post" },
-                    { "q", "index" },
-                    { "json", "1" },
-                    { "tags", $"sort:random+{cleanedCharacter}" }
-                };
-                var queryStringParams = queryParams.Select(p => string.Format("{0}={1}", p.Key, p.Value));
-                apiUri.Query = string.Join("&", queryStringParams);
-
-                List<Rule34Result>? rule34Results = await WebHandler.GetJsonFromApi<List<Rule34Result>>(apiUri.ToString());
-
-                if (rule34Results == default(List<Rule34Result>) || rule34Results.Count == 0)
+                if (rule34Results.Count == 0)
                 {
                     charactersList.RemoveAt(characterIndex);
                     failedCharactersDebug += character.Name + ", ";
@@ -119,6 +107,48 @@ namespace MooBot.Modules.Commands
 
             PostDebugMessage(failedCharactersDebug);
             return string.Empty;
+        }
+
+        private static async Task<List<Rule34Result>> GetImageFromCharacter(Character character, UriBuilder apiUri)
+        {
+            var charactersList = new List<string>
+            {
+                character.Name.Trim().Replace(" ", "_")
+            };
+
+            if (character.BooruTags != null)
+            {
+                var booruTagsList = character.BooruTags.Split(",");
+                foreach (var booruTag in booruTagsList)
+                {
+                    var cleanedBooruTag = booruTag.Trim();
+                    if (cleanedBooruTag == string.Empty || cleanedBooruTag.ToLower() == "none") continue;
+                    Console.WriteLine("============================");
+                    Console.WriteLine(booruTag);
+                    charactersList.Add(booruTag.Trim());
+                }
+            }
+
+            foreach (var characterName in charactersList)
+            {
+                var queryParams = new Dictionary<string, string>() {
+                    { "page", "dapi" },
+                    { "s", "post" },
+                    { "q", "index" },
+                    { "json", "1" },
+                    { "tags", $"sort:random+{characterName}" }
+                };
+                var queryStringParams = queryParams.Select(p => string.Format("{0}={1}", p.Key, p.Value));
+                apiUri.Query = string.Join("&", queryStringParams);
+
+                List<Rule34Result>? rule34Results = await WebHandler.GetJsonFromApi<List<Rule34Result>>(apiUri.ToString());
+
+                if (rule34Results == default(List<Rule34Result>) || rule34Results.Count == 0) continue;
+
+                return rule34Results;
+            }
+
+            return new List<Rule34Result>();
         }
 
         private static async void PostDebugMessage(string charactersList)

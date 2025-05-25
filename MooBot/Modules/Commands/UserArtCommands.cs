@@ -36,7 +36,7 @@ namespace MooBot.Modules.Commands
             }
 
             var embed = new EmbedBuilder()
-                .WithDescription($"{Context.User.Mention} is going to have some fun with <@{user.Id}>")
+                .WithDescription($"<@{user.Id}>")
                 .WithImageUrl(imageUrl)
                 .Build();
 

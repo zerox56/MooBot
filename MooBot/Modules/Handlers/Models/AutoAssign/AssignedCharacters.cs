@@ -23,5 +23,8 @@ namespace MooBot.Modules.Handlers.Models.AutoAssign
 
         [JsonPropertyName("name")]
         public string Name { get; set; }
+
+        [JsonPropertyName("booruTags")]
+        public string BooruTags { get; set; }
     }
 }

@@ -1,6 +1,7 @@
 ﻿using Discord;
 using Discord.Interactions;
 using Discord.WebSocket;
+using Moobot.Managers;
 using Moobot.Modules.Handlers;
 using MooBot.Configuration;
 using MooBot.Modules.Handlers.Models.AutoAssign;
@@ -30,7 +31,7 @@ namespace MooBot.Modules.Commands
             var imageUrl = await GetRandomImage(characters);
             if (imageUrl == string.Empty)
             {
-                await RespondAsync($"No valid images found for character {character.Name}");
+                await RespondAsync($"No valid images found for any of the characters of this user", ephemeral: true);
                 return;
             }
 
@@ -55,10 +56,6 @@ namespace MooBot.Modules.Commands
             if (assignedCharacters == default(AssignedCharacters)) return null;
 
             return assignedCharacters;
-
-            var randomIndex = new Random().Next(assignedCharacters.Characters.Length);
-
-            //return assignedCharacters.Characters[randomIndex];
         }
 
         private static async Task<string> GetRandomImage(AssignedCharacters assignedCharacters)
@@ -71,6 +68,8 @@ namespace MooBot.Modules.Commands
 
             var charactersList = assignedCharacters.Characters.ToList();
             var blacklistedTags = ApplicationConfiguration.Configuration.GetSection("Boorus")["BlacklistedTags"].Split(" ");
+
+            var failedCharactersDebug = "";
 
             while (charactersList.Count > 0)
             {
@@ -94,6 +93,7 @@ namespace MooBot.Modules.Commands
                 if (rule34Results == default(List<Rule34Result>) || rule34Results.Count == 0)
                 {
                     charactersList.RemoveAt(characterIndex);
+                    failedCharactersDebug += character.Name + ", ";
                     continue;
                 }
 
@@ -104,15 +104,34 @@ namespace MooBot.Modules.Commands
 
                     var tags = result.Tags.Split(" ");
 
-                    if (!tags.Intersect(blacklistedTags).Any()) return result.FileUrl;
+                    if (!tags.Intersect(blacklistedTags).Any())
+                    {
+                        PostDebugMessage(failedCharactersDebug);
+                        return result.FileUrl;
+                    }
 
                     rule34Results.RemoveAt(index);
                 }
 
+                failedCharactersDebug += character.Name + ", ";
                 charactersList.RemoveAt(characterIndex);
             }
 
+            PostDebugMessage(failedCharactersDebug);
             return string.Empty;
+        }
+
+        private static async void PostDebugMessage(string charactersList)
+        {
+            if (charactersList == string.Empty) return;
+
+            var discordConfig = ApplicationConfiguration.Configuration.GetSection("Discord");
+            var debugChannelId = ulong.Parse(discordConfig["DebugChannelId"]);
+
+            var discordClient = ServiceManager.GetService<DiscordSocketClient>();
+            var debugChannel = await discordClient.GetChannelAsync(debugChannelId) as ISocketMessageChannel;
+
+            await debugChannel.SendMessageAsync($"Found no results for characters: {charactersList}");
         }
     }
 }

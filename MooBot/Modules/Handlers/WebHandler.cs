@@ -160,17 +160,25 @@ namespace Moobot.Modules.Handlers
             }
         }
 
-        public static async Task<T?> GetJsonFromApi<T>(string url, bool spoof = false)
+        public static async Task<T?> GetJsonFromApi<T>(string url, SpoofType spoof = SpoofType.None)
         {
             try
             {
                 var httpClient = new HttpClient();
 
-                if (spoof)
+                switch(spoof)
                 {
-                    httpClient.DefaultRequestHeaders.Add("User-Agent", "Mozilla/5.0 (Windows NT 10.0; Win64; x64)");
-                    httpClient.DefaultRequestHeaders.Add("Accept", "application/json");
-                    httpClient.DefaultRequestHeaders.Add("Referer", "https://fxtwitter.com/");
+                    case SpoofType.FxTwitter:
+                        httpClient.DefaultRequestHeaders.Add("User-Agent", "Mozilla/5.0 (Windows NT 10.0; Win64; x64)");
+                        httpClient.DefaultRequestHeaders.Add("Accept", "application/json");
+                        httpClient.DefaultRequestHeaders.Add("Referer", "https://fxtwitter.com/");
+                        break;
+                    case SpoofType.Danbooru:
+                        httpClient.DefaultRequestHeaders.Add("User-Agent", "MooBot/1.0");
+                        break;
+                    case SpoofType.None:
+                    default:
+                        break;
                 }
 
                 using var response = await httpClient.GetAsync(url);

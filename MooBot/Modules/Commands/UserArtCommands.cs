@@ -1,12 +1,13 @@
 ﻿using Discord;
 using Discord.Interactions;
 using Discord.WebSocket;
+using Microsoft.Extensions.Configuration;
 using Moobot.Managers;
 using Moobot.Modules.Handlers;
 using MooBot.Configuration;
+using MooBot.Managers.Enums;
 using MooBot.Modules.Handlers.Models.AutoAssign;
 using MooBot.Modules.Handlers.Models.Boorus;
-using System.Web;
 
 namespace MooBot.Modules.Commands
 {
@@ -27,20 +28,25 @@ namespace MooBot.Modules.Commands
             var characters = await GetAssignedCharacters(user.Id);
             if (characters == null) return;
 
+            var responseMsg = await Context.Channel.SendMessageAsync("Finding something spicy...");
+
             // Get random image
             var imageUrl = await GetRandomImage(characters);
             if (imageUrl == string.Empty)
             {
-                await RespondAsync($"No valid images found for any of the characters of this user", ephemeral: true);
+                responseMsg.DeleteAsync();
                 return;
             }
 
             var embed = new EmbedBuilder()
-                .WithDescription($"<@{user.Id}>")
+                .WithDescription($"Arai")
                 .WithImageUrl(imageUrl)
                 .Build();
 
-            await RespondAsync(embed: embed);
+            await responseMsg.ModifyAsync(m => {
+                m.Content = "";
+                m.Embed = embed;
+            });
         }
 
         private static async Task<AssignedCharacters> GetAssignedCharacters(ulong userId)
@@ -60,8 +66,7 @@ namespace MooBot.Modules.Commands
 
         private static async Task<string> GetRandomImage(AssignedCharacters assignedCharacters)
         {
-            var rule34Config = ApplicationConfiguration.Configuration.GetSection("Boorus").GetSection("Rule34");
-            var apiUri = new UriBuilder(rule34Config["BaseApiUrl"]);
+            var danbooruConfig = ApplicationConfiguration.Configuration.GetSection("Boorus").GetSection("Danbooru");
 
             // Loop through alternative names if no results found
             // Also save this info somewhere?
@@ -76,29 +81,29 @@ namespace MooBot.Modules.Commands
                 var characterIndex = new Random().Next(charactersList.Count);
                 Character character = charactersList[characterIndex];
 
-                List<Rule34Result> rule34Results = await GetImageFromCharacter(character, apiUri);
+                var (danbooruResults, characterTag) = await GetImageFromCharacter(character, danbooruConfig);
 
-                if (rule34Results.Count == 0)
+                if (danbooruResults.Count == 0)
                 {
                     charactersList.RemoveAt(characterIndex);
                     failedCharactersDebug += character.Name + ", ";
                     continue;
                 }
 
-                while (rule34Results.Count > 0)
+                while (danbooruResults.Count > 0)
                 {
-                    var index = new Random().Next(rule34Results.Count);
-                    Rule34Result result = rule34Results[index];
+                    var index = new Random().Next(danbooruResults.Count);
+                    DanbooruResult result = danbooruResults[index];
 
-                    var tags = result.Tags.Split(" ");
+                    var tags = result.TagsGeneral.Split(" ");
 
-                    if (!tags.Intersect(blacklistedTags).Any())
+                    if (!tags.Intersect(blacklistedTags).Any() && result.TagsCharacter.Contains(characterTag))
                     {
                         PostDebugMessage(failedCharactersDebug);
                         return result.FileUrl;
                     }
 
-                    rule34Results.RemoveAt(index);
+                    danbooruResults.RemoveAt(index);
                 }
 
                 failedCharactersDebug += character.Name + ", ";
@@ -109,12 +114,9 @@ namespace MooBot.Modules.Commands
             return string.Empty;
         }
 
-        private static async Task<List<Rule34Result>> GetImageFromCharacter(Character character, UriBuilder apiUri)
+        private static async Task<(List<DanbooruResult>, string)> GetImageFromCharacter(Character character, IConfigurationSection danbooruConfig)
         {
-            var charactersList = new List<string>
-            {
-                character.Name.Trim().Replace(" ", "_")
-            };
+            var charactersList = new List<string>();
 
             if (character.BooruTags != null)
             {
@@ -123,32 +125,33 @@ namespace MooBot.Modules.Commands
                 {
                     var cleanedBooruTag = booruTag.Trim();
                     if (cleanedBooruTag == string.Empty || cleanedBooruTag.ToLower() == "none") continue;
-                    Console.WriteLine("============================");
-                    Console.WriteLine(booruTag);
                     charactersList.Add(booruTag.Trim());
                 }
+            } else {
+                charactersList.Add(character.Name.Trim().Replace(" ", "_"));
             }
+            
+            var apiUri = new UriBuilder(danbooruConfig["BaseApiUrl"]);
 
             foreach (var characterName in charactersList)
             {
                 var queryParams = new Dictionary<string, string>() {
-                    { "page", "dapi" },
-                    { "s", "post" },
-                    { "q", "index" },
-                    { "json", "1" },
-                    { "tags", $"sort:random+{characterName}" }
+                    { "api_key", danbooruConfig["ApiKey"] },
+                    { "login", danbooruConfig["Username"] },
+                    { "tags", characterName },
+                    { "random", "true" }
                 };
                 var queryStringParams = queryParams.Select(p => string.Format("{0}={1}", p.Key, p.Value));
                 apiUri.Query = string.Join("&", queryStringParams);
 
-                List<Rule34Result>? rule34Results = await WebHandler.GetJsonFromApi<List<Rule34Result>>(apiUri.ToString());
+                List<DanbooruResult>? danbooruResults = await WebHandler.GetJsonFromApi<List<DanbooruResult>>(apiUri.ToString(), SpoofType.Danbooru);
 
-                if (rule34Results == default(List<Rule34Result>) || rule34Results.Count == 0) continue;
+                if (danbooruResults == default(List<DanbooruResult>) || danbooruResults.Count == 0) continue;
 
-                return rule34Results;
+                return (danbooruResults, characterName);
             }
 
-            return new List<Rule34Result>();
+            return (new List<DanbooruResult>(), "");
         }
 
         private static async void PostDebugMessage(string charactersList)

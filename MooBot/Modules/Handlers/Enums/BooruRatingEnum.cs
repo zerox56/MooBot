@@ -2,8 +2,12 @@
 {
     public enum BooruRating
     {
+        G,
+        S,
         Safe,
         Questionable,
-        Explicit
+        Q,
+        Explicit,
+        E
     }
 }

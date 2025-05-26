@@ -185,7 +185,7 @@ namespace MooBot.Modules.Handlers
                     var tweetId = match.Groups[2].Value;
 
                     var fxtwitterApiUrl = $"https://api.fxtwitter.com/{username}/status/{tweetId}";
-                    TweetResponse? tweetResponse = await WebHandler.GetJsonFromApi<TweetResponse>(fxtwitterApiUrl, true);
+                    TweetResponse? tweetResponse = await WebHandler.GetJsonFromApi<TweetResponse>(fxtwitterApiUrl, SpoofType.FxTwitter);
                     if (tweetResponse == null || tweetResponse.Code != 200) return new List<string>() { url };
                     if (tweetResponse.Tweet.Media.Photos == null || tweetResponse.Tweet.Media.Photos.Count == 0) return new List<string>() { url };
 

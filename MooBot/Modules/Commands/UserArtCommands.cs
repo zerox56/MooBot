@@ -8,6 +8,7 @@ using MooBot.Configuration;
 using MooBot.Managers.Enums;
 using MooBot.Modules.Handlers.Models.AutoAssign;
 using MooBot.Modules.Handlers.Models.Boorus;
+using System.Web;
 
 namespace MooBot.Modules.Commands
 {
@@ -31,7 +32,7 @@ namespace MooBot.Modules.Commands
             var responseMsg = await Context.Channel.SendMessageAsync("Finding something spicy...");
 
             // Get random image
-            var imageUrl = await GetRandomImage(characters);
+            var imageUrl = await GetRandomImage(characters, [BooruRating.Q, BooruRating.E]);
             if (imageUrl == string.Empty)
             {
                 responseMsg.DeleteAsync();
@@ -39,7 +40,43 @@ namespace MooBot.Modules.Commands
             }
 
             var embed = new EmbedBuilder()
-                .WithDescription($"Arai")
+                .WithDescription(user.GlobalName)
+                .WithImageUrl(imageUrl)
+                .Build();
+
+            await responseMsg.ModifyAsync(m => {
+                m.Content = "";
+                m.Embed = embed;
+            });
+        }
+
+        [SlashCommand("cute", "Gets a random SFW image of the assigned user")]
+        public async Task CuteUser(SocketUser user)
+        {
+            var channel = Context.Channel;
+            var guildChannel = channel as SocketTextChannel;
+
+            if (guildChannel == null || guildChannel.IsNsfw)
+            {
+                await RespondAsync("Command can only be used on a SFW channel", ephemeral: true);
+                return;
+            }
+
+            var characters = await GetAssignedCharacters(user.Id);
+            if (characters == null) return;
+
+            var responseMsg = await Context.Channel.SendMessageAsync("Finding something cute...");
+
+            // Get random image
+            var imageUrl = await GetRandomImage(characters, [BooruRating.G, BooruRating.S]);
+            if (imageUrl == string.Empty)
+            {
+                responseMsg.DeleteAsync();
+                return;
+            }
+
+            var embed = new EmbedBuilder()
+                .WithDescription(user.GlobalName)
                 .WithImageUrl(imageUrl)
                 .Build();
 
@@ -64,7 +101,7 @@ namespace MooBot.Modules.Commands
             return assignedCharacters;
         }
 
-        private static async Task<string> GetRandomImage(AssignedCharacters assignedCharacters)
+        private static async Task<string> GetRandomImage(AssignedCharacters assignedCharacters, BooruRating[] booruRatings)
         {
             var danbooruConfig = ApplicationConfiguration.Configuration.GetSection("Boorus").GetSection("Danbooru");
 
@@ -81,7 +118,7 @@ namespace MooBot.Modules.Commands
                 var characterIndex = new Random().Next(charactersList.Count);
                 Character character = charactersList[characterIndex];
 
-                var (danbooruResults, characterTag) = await GetImageFromCharacter(character, danbooruConfig);
+                var (danbooruResults, characterTag) = await GetImageFromCharacter(character, danbooruConfig, booruRatings);
 
                 if (danbooruResults.Count == 0)
                 {
@@ -114,7 +151,7 @@ namespace MooBot.Modules.Commands
             return string.Empty;
         }
 
-        private static async Task<(List<DanbooruResult>, string)> GetImageFromCharacter(Character character, IConfigurationSection danbooruConfig)
+        private static async Task<(List<DanbooruResult>, string)> GetImageFromCharacter(Character character, IConfigurationSection danbooruConfig, BooruRating[] booruRatings)
         {
             var charactersList = new List<string>();
 
@@ -135,10 +172,33 @@ namespace MooBot.Modules.Commands
 
             foreach (var characterName in charactersList)
             {
+                var tags = "";
+                if (booruRatings == null || booruRatings.Length == 0)
+                {
+                    tags = characterName;
+                }
+                else
+                {
+                    var ratingStrings = booruRatings.Select(r =>
+                    {
+                        return r switch
+                        {
+                            BooruRating.G => "~rating:g",
+                            BooruRating.S => "~rating:s",
+                            BooruRating.Q => "~rating:q",
+                            BooruRating.E => "~rating:e",
+                            _ => null
+                        };
+                    }).Where(s => s != null);
+
+                    tags = HttpUtility.UrlEncode(string.Join(" ", ratingStrings));
+                    tags += HttpUtility.UrlEncode(" " + characterName);
+                }
+
                 var queryParams = new Dictionary<string, string>() {
                     { "api_key", danbooruConfig["ApiKey"] },
                     { "login", danbooruConfig["Username"] },
-                    { "tags", characterName },
+                    { "tags", tags },
                     { "random", "true" }
                 };
                 var queryStringParams = queryParams.Select(p => string.Format("{0}={1}", p.Key, p.Value));

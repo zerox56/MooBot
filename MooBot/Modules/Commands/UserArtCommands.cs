@@ -29,13 +29,13 @@ namespace MooBot.Modules.Commands
             var characters = await GetAssignedCharacters(user.Id);
             if (characters == null) return;
 
-            var responseMsg = await Context.Channel.SendMessageAsync("Finding something spicy...");
+            await RespondAsync("Finding something spicy...");
 
             // Get random image
             var imageUrl = await GetRandomImage(characters, [BooruRating.Q, BooruRating.E]);
             if (imageUrl == string.Empty)
             {
-                responseMsg.DeleteAsync();
+                await DeleteOriginalResponseAsync();
                 return;
             }
 
@@ -44,7 +44,7 @@ namespace MooBot.Modules.Commands
                 .WithImageUrl(imageUrl)
                 .Build();
 
-            await responseMsg.ModifyAsync(m => {
+            await ModifyOriginalResponseAsync(m => {
                 m.Content = "";
                 m.Embed = embed;
             });
@@ -65,13 +65,13 @@ namespace MooBot.Modules.Commands
             var characters = await GetAssignedCharacters(user.Id);
             if (characters == null) return;
 
-            var responseMsg = await Context.Channel.SendMessageAsync("Finding something cute...");
+            await RespondAsync("Finding something cute...");
 
             // Get random image
             var imageUrl = await GetRandomImage(characters, [BooruRating.G, BooruRating.S]);
             if (imageUrl == string.Empty)
             {
-                responseMsg.DeleteAsync();
+                await DeleteOriginalResponseAsync();
                 return;
             }
 
@@ -80,7 +80,7 @@ namespace MooBot.Modules.Commands
                 .WithImageUrl(imageUrl)
                 .Build();
 
-            await responseMsg.ModifyAsync(m => {
+            await ModifyOriginalResponseAsync(m => {
                 m.Content = "";
                 m.Embed = embed;
             });

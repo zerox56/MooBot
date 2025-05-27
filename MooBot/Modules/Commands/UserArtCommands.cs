@@ -281,8 +281,9 @@ namespace MooBot.Modules.Commands
 
                 foreach (var character in foundCharacters)
                 {
-                    otherCharactersDescription += $"{character.FaelicanName} as {character.Name} from {character.FranchiseName}";
+                    otherCharactersDescription += $"{character.FaelicanName} as {character.Name} from {character.FranchiseName}, ";
                 }
+                otherCharactersDescription.Substring(otherCharactersDescription.Length - 2);
 
                 return otherCharactersDescription;
             }

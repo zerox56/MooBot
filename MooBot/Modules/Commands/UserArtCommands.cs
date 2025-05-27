@@ -43,7 +43,6 @@ namespace MooBot.Modules.Commands
                 .WithDescription(user.GlobalName)
                 .WithImageUrl(imageUrl)
                 .Build();
-
             await ModifyOriginalResponseAsync(m => {
                 m.Content = "";
                 m.Embed = embed;
@@ -134,7 +133,8 @@ namespace MooBot.Modules.Commands
 
                     var tags = result.TagsGeneral.Split(" ");
 
-                    if (!tags.Intersect(blacklistedTags).Any() && result.TagsCharacter.Contains(characterTag))
+                    if (!tags.Intersect(blacklistedTags).Any() && result.TagsCharacter.Contains(characterTag) &&
+                        tags.Contains("animated"))
                     {
                         PostDebugMessage(failedCharactersDebug);
                         return result.FileUrl;

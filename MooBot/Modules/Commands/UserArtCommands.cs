@@ -6,6 +6,7 @@ using Moobot.Managers;
 using Moobot.Modules.Handlers;
 using MooBot.Configuration;
 using MooBot.Managers.Enums;
+using MooBot.Modules.Handlers.Models;
 using MooBot.Modules.Handlers.Models.AutoAssign;
 using MooBot.Modules.Handlers.Models.Boorus;
 using System.Web;
@@ -32,16 +33,26 @@ namespace MooBot.Modules.Commands
             await RespondAsync("Finding something spicy...");
 
             // Get random image
-            var imageUrl = await GetRandomImage(characters, [BooruRating.Q, BooruRating.E]);
-            if (imageUrl == string.Empty)
+            var userArtResult = await GetRandomImage(characters, [BooruRating.Q, BooruRating.E]);
+            if (userArtResult == null)
             {
                 await DeleteOriginalResponseAsync();
                 return;
             }
 
+            var artists = "";
+            if (userArtResult.Artists != null && userArtResult.Artists.Length > 0)
+            {
+                artists = string.Join(", ", userArtResult.Artists);
+            }
+            var description = $"{userArtResult.SelectedCharacter.FaelicanName} as {userArtResult.SelectedCharacter.Name} " +
+                $"from {userArtResult.SelectedCharacter.FranchiseName}"; 
+            description += await GetUsersByCharacters(userArtResult.Characters, userArtResult.SelectedCharacter);
+
             var embed = new EmbedBuilder()
-                .WithDescription(user.GlobalName)
-                .WithImageUrl(imageUrl)
+                .WithDescription(description)
+                .WithImageUrl(userArtResult.ImageUrl)
+                .WithFooter(artists)
                 .Build();
 
             await ModifyOriginalResponseAsync(m => {
@@ -68,16 +79,27 @@ namespace MooBot.Modules.Commands
             await RespondAsync("Finding something cute...");
 
             // Get random image
-            var imageUrl = await GetRandomImage(characters, [BooruRating.G, BooruRating.S]);
-            if (imageUrl == string.Empty)
+            var userArtResult = await GetRandomImage(characters, [BooruRating.G, BooruRating.S]);
+            if (userArtResult == null)
             {
                 await DeleteOriginalResponseAsync();
                 return;
             }
 
+            var artists = "";
+            if (userArtResult.Artists != null && userArtResult.Artists.Length > 0)
+            {
+                artists = string.Join(", ", userArtResult.Artists);
+            }
+
+            var description = $"{userArtResult.SelectedCharacter.FaelicanName} as {userArtResult.SelectedCharacter.Name} " +
+                $"from {userArtResult.SelectedCharacter.FranchiseName}";
+            description += await GetUsersByCharacters(userArtResult.Characters, userArtResult.SelectedCharacter);
+
             var embed = new EmbedBuilder()
-                .WithDescription(user.GlobalName)
-                .WithImageUrl(imageUrl)
+                .WithDescription(description)
+                .WithImageUrl(userArtResult.ImageUrl)
+                .WithFooter(artists)
                 .Build();
 
             await ModifyOriginalResponseAsync(m => {
@@ -101,7 +123,7 @@ namespace MooBot.Modules.Commands
             return assignedCharacters;
         }
 
-        private static async Task<string> GetRandomImage(AssignedCharacters assignedCharacters, BooruRating[] booruRatings)
+        private static async Task<UserArtResult> GetRandomImage(AssignedCharacters assignedCharacters, BooruRating[] booruRatings)
         {
             var danbooruConfig = ApplicationConfiguration.Configuration.GetSection("Boorus").GetSection("Danbooru");
 
@@ -134,10 +156,18 @@ namespace MooBot.Modules.Commands
 
                     var tags = result.TagsGeneral.Split(" ");
 
-                    if (!tags.Intersect(blacklistedTags).Any() && result.TagsCharacter.Contains(characterTag))
+                    if (!tags.Intersect(blacklistedTags).Any() && result.TagsCharacter.Contains(characterTag) &&
+                        !tags.Contains("animated"))
                     {
                         PostDebugMessage(failedCharactersDebug);
-                        return result.FileUrl;
+                        var userArtResult = new UserArtResult()
+                        {
+                            ImageUrl = result.FileUrl,
+                            SelectedCharacter = character,
+                            Characters = result.TagsCharacter.Split(" "),
+                            Artists = result.TagsArtist.Split(" ")
+                        };
+                        return userArtResult;
                     }
 
                     danbooruResults.RemoveAt(index);
@@ -148,7 +178,7 @@ namespace MooBot.Modules.Commands
             }
 
             PostDebugMessage(failedCharactersDebug);
-            return string.Empty;
+            return null;
         }
 
         private static async Task<(List<DanbooruResult>, string)> GetImageFromCharacter(Character character, IConfigurationSection danbooruConfig, BooruRating[] booruRatings)
@@ -212,6 +242,54 @@ namespace MooBot.Modules.Commands
             }
 
             return (new List<DanbooruResult>(), "");
+        }
+
+        private static async Task<string> GetUsersByCharacters(string[] characters, Character selectedCharacter)
+        {
+            if (characters.Length <= 1) return string.Empty;
+
+            var assignPediaConfig = ApplicationConfiguration.Configuration.GetSection("AssignPedia");
+            var apiUri = new UriBuilder(assignPediaConfig["BaseApiUrl"] + "characters");
+
+            var encodedQueryStringParams = string.Format("{0}={1}", "rosettes_key", assignPediaConfig["ApiKey"]);
+            apiUri.Query = string.Join("&", encodedQueryStringParams);
+
+            AssignedCharacters? assignedCharacters = await WebHandler.GetJsonFromApi<AssignedCharacters>(apiUri.ToString());
+
+            if (assignedCharacters == default(AssignedCharacters)) return string.Empty;
+
+            var foundCharacters = new HashSet<Character>();
+
+            foreach (var character in characters)
+            {
+                var cleanedCharacter = character.Trim().ToLower();
+                if (string.IsNullOrEmpty(cleanedCharacter)) continue;
+
+                var foundCharacter = assignedCharacters.Characters.FirstOrDefault(c => c.Name.Trim().ToLower() == cleanedCharacter ||
+                    (c.BooruTags != null && c.BooruTags.Contains(cleanedCharacter)));
+
+                if (foundCharacter == default(Character) || foundCharacter == null) continue;
+
+                if (foundCharacter.Name == selectedCharacter.Name && foundCharacter.FranchiseName == selectedCharacter.FranchiseName) continue;
+
+                foundCharacters.Add(foundCharacter);
+            }
+
+            if (foundCharacters.Count > 0)
+            {
+                var otherCharactersDescription = $"{Environment.NewLine}Also starring!: ";
+
+                foreach (var character in foundCharacters)
+                {
+                    otherCharactersDescription += $"{character.FaelicanName} as {character.Name} from {character.FranchiseName}";
+                }
+
+                return otherCharactersDescription;
+            }
+            else
+            {
+                return string.Empty;
+            }
         }
 
         private static async void PostDebugMessage(string charactersList)

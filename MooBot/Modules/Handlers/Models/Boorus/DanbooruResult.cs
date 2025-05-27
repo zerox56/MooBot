@@ -23,5 +23,8 @@ namespace MooBot.Modules.Handlers.Models.Boorus
 
         [JsonPropertyName("tag_string_character")]
         public string TagsCharacter { get; set; }
+
+        [JsonPropertyName("tag_string_artist")]
+        public string TagsArtist { get; set; }
     }
 }

@@ -6,6 +6,7 @@ using Moobot.Managers;
 using Moobot.Modules.Handlers;
 using MooBot.Configuration;
 using MooBot.Managers.Enums;
+using MooBot.Modules.Handlers.Models;
 using MooBot.Modules.Handlers.Models.AutoAssign;
 using MooBot.Modules.Handlers.Models.Boorus;
 using System.Web;
@@ -32,17 +33,25 @@ namespace MooBot.Modules.Commands
             await RespondAsync("Finding something spicy...");
 
             // Get random image
-            var imageUrl = await GetRandomImage(characters, [BooruRating.Q, BooruRating.E]);
-            if (imageUrl == string.Empty)
+            var userArtResult = await GetRandomImage(characters, [BooruRating.Q, BooruRating.E]);
+            if (userArtResult == null)
             {
                 await DeleteOriginalResponseAsync();
                 return;
             }
 
+            var artists = "";
+            if (userArtResult.Artists != null && userArtResult.Artists.Length > 0)
+            {
+                artists = string.Join(", ", userArtResult.Artists);
+            }
+
             var embed = new EmbedBuilder()
                 .WithDescription(user.GlobalName)
-                .WithImageUrl(imageUrl)
+                .WithImageUrl(userArtResult.ImageUrl)
+                .WithFooter(artists)
                 .Build();
+
             await ModifyOriginalResponseAsync(m => {
                 m.Content = "";
                 m.Embed = embed;
@@ -67,16 +76,23 @@ namespace MooBot.Modules.Commands
             await RespondAsync("Finding something cute...");
 
             // Get random image
-            var imageUrl = await GetRandomImage(characters, [BooruRating.G, BooruRating.S]);
-            if (imageUrl == string.Empty)
+            var userArtResult = await GetRandomImage(characters, [BooruRating.G, BooruRating.S]);
+            if (userArtResult == null)
             {
                 await DeleteOriginalResponseAsync();
                 return;
             }
 
+            var artists = "";
+            if (userArtResult.Artists != null && userArtResult.Artists.Length > 0)
+            {
+                artists = string.Join(", ", userArtResult.Artists);
+            }
+
             var embed = new EmbedBuilder()
                 .WithDescription(user.GlobalName)
-                .WithImageUrl(imageUrl)
+                .WithImageUrl(userArtResult.ImageUrl)
+                .WithFooter(artists)
                 .Build();
 
             await ModifyOriginalResponseAsync(m => {
@@ -100,7 +116,7 @@ namespace MooBot.Modules.Commands
             return assignedCharacters;
         }
 
-        private static async Task<string> GetRandomImage(AssignedCharacters assignedCharacters, BooruRating[] booruRatings)
+        private static async Task<UserArtResult> GetRandomImage(AssignedCharacters assignedCharacters, BooruRating[] booruRatings)
         {
             var danbooruConfig = ApplicationConfiguration.Configuration.GetSection("Boorus").GetSection("Danbooru");
 
@@ -134,10 +150,16 @@ namespace MooBot.Modules.Commands
                     var tags = result.TagsGeneral.Split(" ");
 
                     if (!tags.Intersect(blacklistedTags).Any() && result.TagsCharacter.Contains(characterTag) &&
-                        tags.Contains("animated"))
+                        !tags.Contains("animated"))
                     {
                         PostDebugMessage(failedCharactersDebug);
-                        return result.FileUrl;
+                        var userArtResult = new UserArtResult()
+                        {
+                            ImageUrl = result.FileUrl,
+                            Characters = result.TagsCharacter.Split(" "),
+                            Artists = result.TagsArtist.Split(" ")
+                        };
+                        return userArtResult;
                     }
 
                     danbooruResults.RemoveAt(index);
@@ -148,7 +170,7 @@ namespace MooBot.Modules.Commands
             }
 
             PostDebugMessage(failedCharactersDebug);
-            return string.Empty;
+            return null;
         }
 
         private static async Task<(List<DanbooruResult>, string)> GetImageFromCharacter(Character character, IConfigurationSection danbooruConfig, BooruRating[] booruRatings)

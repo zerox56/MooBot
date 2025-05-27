@@ -45,9 +45,12 @@ namespace MooBot.Modules.Commands
             {
                 artists = string.Join(", ", userArtResult.Artists);
             }
+            var description = $"{userArtResult.SelectedCharacter.FaelicanName} as {userArtResult.SelectedCharacter.Name} " +
+                $"from {userArtResult.SelectedCharacter.FranchiseName}"; 
+            description += await GetUsersByCharacters(userArtResult.Characters, userArtResult.SelectedCharacter);
 
             var embed = new EmbedBuilder()
-                .WithDescription(user.GlobalName)
+                .WithDescription(description)
                 .WithImageUrl(userArtResult.ImageUrl)
                 .WithFooter(artists)
                 .Build();
@@ -89,8 +92,12 @@ namespace MooBot.Modules.Commands
                 artists = string.Join(", ", userArtResult.Artists);
             }
 
+            var description = $"{userArtResult.SelectedCharacter.FaelicanName} as {userArtResult.SelectedCharacter.Name} " +
+                $"from {userArtResult.SelectedCharacter.FranchiseName}";
+            description += await GetUsersByCharacters(userArtResult.Characters, userArtResult.SelectedCharacter);
+
             var embed = new EmbedBuilder()
-                .WithDescription(user.GlobalName)
+                .WithDescription(description)
                 .WithImageUrl(userArtResult.ImageUrl)
                 .WithFooter(artists)
                 .Build();
@@ -156,6 +163,7 @@ namespace MooBot.Modules.Commands
                         var userArtResult = new UserArtResult()
                         {
                             ImageUrl = result.FileUrl,
+                            SelectedCharacter = character,
                             Characters = result.TagsCharacter.Split(" "),
                             Artists = result.TagsArtist.Split(" ")
                         };
@@ -234,6 +242,54 @@ namespace MooBot.Modules.Commands
             }
 
             return (new List<DanbooruResult>(), "");
+        }
+
+        private static async Task<string> GetUsersByCharacters(string[] characters, Character selectedCharacter)
+        {
+            if (characters.Length <= 1) return string.Empty;
+
+            var assignPediaConfig = ApplicationConfiguration.Configuration.GetSection("AssignPedia");
+            var apiUri = new UriBuilder(assignPediaConfig["BaseApiUrl"] + "characters");
+
+            var encodedQueryStringParams = string.Format("{0}={1}", "rosettes_key", assignPediaConfig["ApiKey"]);
+            apiUri.Query = string.Join("&", encodedQueryStringParams);
+
+            AssignedCharacters? assignedCharacters = await WebHandler.GetJsonFromApi<AssignedCharacters>(apiUri.ToString());
+
+            if (assignedCharacters == default(AssignedCharacters)) return string.Empty;
+
+            var foundCharacters = new HashSet<Character>();
+
+            foreach (var character in characters)
+            {
+                var cleanedCharacter = character.Trim().ToLower();
+                if (string.IsNullOrEmpty(cleanedCharacter)) continue;
+
+                var foundCharacter = assignedCharacters.Characters.FirstOrDefault(c => c.Name.Trim().ToLower() == cleanedCharacter ||
+                    (c.BooruTags != null && c.BooruTags.Contains(cleanedCharacter)));
+
+                if (foundCharacter == default(Character) || foundCharacter == null) continue;
+
+                if (foundCharacter.Name == selectedCharacter.Name && foundCharacter.FranchiseName == selectedCharacter.FranchiseName) continue;
+
+                foundCharacters.Add(foundCharacter);
+            }
+
+            if (foundCharacters.Count > 0)
+            {
+                var otherCharactersDescription = $"{Environment.NewLine}Also starring!: ";
+
+                foreach (var character in foundCharacters)
+                {
+                    otherCharactersDescription += $"{character.FaelicanName} as {character.Name} from {character.FranchiseName}";
+                }
+
+                return otherCharactersDescription;
+            }
+            else
+            {
+                return string.Empty;
+            }
         }
 
         private static async void PostDebugMessage(string charactersList)

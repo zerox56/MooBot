@@ -131,7 +131,15 @@ namespace MooBot.Modules.Commands
             // Also save this info somewhere?
 
             var charactersList = assignedCharacters.Characters.ToList();
-            var blacklistedTags = ApplicationConfiguration.Configuration.GetSection("Boorus")["BlacklistedTags"].Split(" ");
+            var blacklistedTags = new List<string>();
+            if (booruRatings.Any(br => br.IsNSFW()))
+            {
+                blacklistedTags = ApplicationConfiguration.Configuration.GetSection("Boorus")["NSFWBlacklistedTags"].Split(" ").ToList();
+            } 
+            else
+            {
+                blacklistedTags = ApplicationConfiguration.Configuration.GetSection("Boorus")["SFWBlacklistedTags"].Split(" ").ToList();
+            }
 
             var failedCharactersDebug = "";
 

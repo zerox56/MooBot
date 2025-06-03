@@ -286,18 +286,26 @@ namespace MooBot.Modules.Handlers
             foreach (var characterAssignment in characterAssignments)
             {
                 var cleanedupCharacter = Regex.Replace(characterAssignment.Name, @"\([^)]*\)", "").Trim().ToLower();
-                var cleanedupCharacterRevered = StringUtils.ReverseWords(cleanedupCharacter).ToLower();
+                var cleanedupCharacterReversed = StringUtils.ReverseWords(cleanedupCharacter).ToLower();
                 var characterNameSplit = cleanedupCharacter.Split(' ', StringSplitOptions.RemoveEmptyEntries);
 
                 var checkCharacterMatch = new List<Func<Character?>>()
                 {
+                    // Check booru tags
+                    () => assignedCharacters.Characters.FirstOrDefault(c =>
+                        c.BooruTags.Split(',', StringSplitOptions.RemoveEmptyEntries).Any(cSplit => 
+                        cSplit.ToLower().Trim() == cleanedupCharacter)),
+                    // Check booru tags reverse
+                    () => assignedCharacters.Characters.FirstOrDefault(c =>
+                        c.BooruTags.Split(',', StringSplitOptions.RemoveEmptyEntries).Any(cSplit =>
+                        cSplit.ToLower().Trim() == cleanedupCharacterReversed)),
                     // Check full name + (franchise)
                     () => assignedCharacters.Characters.FirstOrDefault(c =>
                         c.Name.ToLower().StartsWith(cleanedupCharacter) &&
                         c.FranchiseName.ToLower().Contains(characterAssignment.Series.ToLower())),
                     // Check reversed full name + (franchise)
                     () => assignedCharacters.Characters.FirstOrDefault(c =>
-                        c.Name.ToLower().StartsWith(cleanedupCharacterRevered) &&
+                        c.Name.ToLower().StartsWith(cleanedupCharacterReversed) &&
                         c.FranchiseName.ToLower().Contains(characterAssignment.Series.ToLower())),
                     // Check full name
                     () => assignedCharacters.Characters.FirstOrDefault(c => c.Name.ToLower() == characterAssignment.Name),

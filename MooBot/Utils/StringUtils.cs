@@ -32,6 +32,26 @@ namespace Moobot.Utils
             return validUrls.ToArray();
         }
 
+        public static string NormalizeUrl(string url)
+        {
+            if (url.StartsWith("http://", StringComparison.OrdinalIgnoreCase) ||
+                url.StartsWith("https://", StringComparison.OrdinalIgnoreCase))
+            {
+                var uri = new Uri(url);
+                string host = uri.Host.StartsWith("www.", StringComparison.OrdinalIgnoreCase)
+                    ? uri.Host.Substring(4)
+                    : uri.Host;
+                return $"{uri.Scheme}://{host}{uri.PathAndQuery}";
+            }
+
+            if (url.StartsWith("www.", StringComparison.OrdinalIgnoreCase))
+            {
+                url = url.Substring(4);
+            }
+
+            return "https://" + url;
+        }
+
         public static string Capitalize(string str)
         {
             return char.ToUpper(str[0]) + str.Substring(1);

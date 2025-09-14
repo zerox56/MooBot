@@ -1,15 +1,17 @@
 using Discord.Interactions;
-using Moobot.Database.Models.Entities;
 using Moobot.Database;
+using Moobot.Database.Models.Entities;
+using Moobot.Database.Queries;
 using Moobot.Managers;
 using Moobot.Modules.Handlers;
 using Moobot.Utils;
 using MooBot.Configuration;
 using MooBot.Database.Models.Entities;
+using MooBot.Managers.CharacterAssignment;
 using MooBot.Modules.Commands.Pokemon;
+using MooBot.Modules.Handlers.Models.AutoAssign;
 using Newtonsoft.Json;
 using System.Text.RegularExpressions;
-using Moobot.Database.Queries;
 
 namespace Moobot.Modules.Commands
 {
@@ -293,6 +295,50 @@ namespace Moobot.Modules.Commands
             emojis.ForEach(e => response += StringUtils.ConvertUnicodeToString(e.Id));
 
             await RespondAsync(response);
+        }
+
+        [SlashCommand("whois", "Tries to find the character linked to the user in faelicapedia")]
+        public async Task GetUserByCharacterName(string name)
+        {
+            var assignPediaConfig = ApplicationConfiguration.Configuration.GetSection("AssignPedia");
+            var apiUri = new UriBuilder(assignPediaConfig["BaseApiUrl"] + "characters");
+
+            var encodedQueryStringParams = string.Format("{0}={1}", "rosettes_key", assignPediaConfig["ApiKey"]);
+            apiUri.Query = string.Join("&", encodedQueryStringParams);
+
+            AssignedCharacters? assignedCharacters = await WebHandler.GetJsonFromApi<AssignedCharacters>(apiUri.ToString());
+
+            if (assignedCharacters == default(AssignedCharacters)) return;
+
+            var cleanedName = name.ToLower().Replace(" ", "");
+            var nameReverse = StringUtils.ReverseWords(name).ToLower().Replace(" ", "");
+
+            var checkCharacterMatch = new List<Func<Character?>>()
+                {
+                    () => assignedCharacters.Characters.FirstOrDefault(c => 
+                        c.Name.ToLower().Replace(" ", "") == cleanedName),
+                    () => assignedCharacters.Characters.FirstOrDefault(c =>
+                        c.Name.ToLower().Replace(" ", "") == nameReverse),
+                };
+
+            Character assignedCharacter = null;
+
+            foreach (var check in checkCharacterMatch)
+            {
+                var result = check();
+                if (result == null) continue;
+
+                assignedCharacter = result;
+                break;
+            }
+
+            if (assignedCharacter == null)
+            {
+                await RespondAsync("Couldn't find the character by that name");
+                return;
+            }
+
+            await RespondAsync($"It's {assignedCharacter.FaelicanName}");
         }
     }
 }

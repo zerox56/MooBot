@@ -9,8 +9,9 @@ using Moobot.Managers;
 using MooBot.Database.Models.Entities;
 using MooBot.Modules.Commands.Reminders;
 using MooBot.Preconditions;
-using System.Threading.Channels;
 using System;
+using System.Text;
+using System.Threading.Channels;
 
 namespace MooBot.Modules.Commands
 {
@@ -59,6 +60,28 @@ namespace MooBot.Modules.Commands
 
             dbContext.AnimalFact.AddAnimalFact(animalFact);
             await modal.RespondAsync($"Animal fact has been added!");
+        }
+
+        [SlashCommand("permissions", "Checks bot permissions on the channel")]
+        [OwnerOnly]
+        public async Task PermissionsCheck()
+        {
+            var channel = Context.Channel;
+            var guild = Context.Guild;
+            var bot = Context.Guild.CurrentUser;
+
+            var permissions = bot.GetPermissions(channel as IGuildChannel);
+
+            StringBuilder stringBuilder = new StringBuilder();
+            stringBuilder.AppendLine("**Channel permissions:**");
+            stringBuilder.AppendLine($"- ViewChannel: {permissions.ViewChannel}");
+            stringBuilder.AppendLine($"- ReadMessageHistory: {permissions.ReadMessageHistory}");
+            stringBuilder.AppendLine($"- SendMessages: {permissions.SendMessages}");
+            stringBuilder.AppendLine($"- ManageMessages: {permissions.ManageMessages}");
+            stringBuilder.AppendLine($"- AddReactions: {permissions.AddReactions}");
+            stringBuilder.AppendLine($"- AttachFiles: {permissions.AttachFiles}");
+
+            await RespondAsync(stringBuilder.ToString());
         }
     }
 }

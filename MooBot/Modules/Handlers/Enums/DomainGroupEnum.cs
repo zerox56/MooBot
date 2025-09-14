@@ -3,6 +3,7 @@
     public enum DomainGroupEnum
     {
         Twitter,
-        Pixiv
+        Pixiv,
+        Youtube
     }
 }

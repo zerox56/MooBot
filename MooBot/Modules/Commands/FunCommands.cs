@@ -338,7 +338,7 @@ namespace Moobot.Modules.Commands
                 return;
             }
 
-            await RespondAsync($"It's {assignedCharacter.FaelicanName}");
+            await RespondAsync($"{assignedCharacter.Name} is {assignedCharacter.FaelicanName}");
         }
 
         [SlashCommand("whois-king", "Tries to find the user with the most assigns in the franchise in faelicapedia")]
@@ -398,7 +398,7 @@ namespace Moobot.Modules.Commands
             var count = mostCharactersGroup.Count();
             var mostCharacters = mostCharactersGroup?.FirstOrDefault();
 
-            await RespondAsync($"{mostCharacters.FaelicanName} has the most with {count} out of {assignedCharacters.Characters.Count()}");
+            await RespondAsync($"{mostCharacters.FaelicanName} is the king of {mostCharacters.FranchiseName}. ({count}/{assignedCharacters.Characters.Count()})");
         }
     }
 }

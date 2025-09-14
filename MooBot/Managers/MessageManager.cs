@@ -90,6 +90,18 @@ namespace MooBot.Managers
                 responseMessage = $"Nice tracker{Environment.NewLine}{responseMessage}";
             }
 
+            if (msg is IUserMessage userMessage)
+            {
+                try
+                {
+                    await userMessage.ModifyAsync(m => m.Flags = MessageFlags.SuppressEmbeds);
+                }
+                catch (Discord.Net.HttpException ex)
+                {
+                    Console.WriteLine("No manage messages permissions");
+                }
+            }
+
             await channel.SendMessageAsync(
                 text: responseMessage,
                 messageReference: new MessageReference(msg.Id)

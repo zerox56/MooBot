@@ -15,7 +15,7 @@ namespace MooBot.Managers
     {
         public static async Task OnMessageReceived(SocketMessage msg)
         {
-            if (msg == null || msg.Author.IsBot) return;
+            if (msg == null) return;
 
             // Check if message comes from a guild channel with a message action enabled
             var guildId = (msg.Channel as SocketGuildChannel)?.Guild.Id ?? 0;
@@ -24,7 +24,7 @@ namespace MooBot.Managers
 
             if (channel == default(Channel)) return;
 
-            var cleanedLink = await CleanupTwitterLink(msg);
+            var cleanedLink = await CleanupEmbedLink(msg);
 
             if (!channel.CheckAssignees || cleanedLink) return;
 
@@ -32,7 +32,7 @@ namespace MooBot.Managers
             await AutoAssignHandler.AutoAssignCharacters(msg);
         }
 
-        private static async Task<bool> CleanupTwitterLink(SocketMessage msg) {
+        private static async Task<bool> CleanupEmbedLink(SocketMessage msg) {
             var contentUrls = StringUtils.GetAllUrls(msg.Content);
 
             if (contentUrls.Length == 0) return false;

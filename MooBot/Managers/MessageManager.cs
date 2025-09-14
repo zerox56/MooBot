@@ -60,6 +60,8 @@ namespace MooBot.Managers
 
                 if (domainGroup == default(DomainGroup)) continue;
 
+                if (!domainGroup.ConvertUrl && !hasQueryInUrl) continue;
+
                 switch (domainGroup.Group)
                 {
                     case DomainGroupEnum.Twitter:

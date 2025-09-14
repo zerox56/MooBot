@@ -11,5 +11,8 @@ namespace Moobot.Database.Models.Entities
 
         [Column("group")]
         public DomainGroupEnum Group { get; set; }
+
+        [Column("convert_url")]
+        public bool ConvertUrl { get; set; }
     }
 }

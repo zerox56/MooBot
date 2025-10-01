@@ -26,6 +26,7 @@ namespace Moobot.Database
         public virtual DbSet<Media> Media { get; set; }
         public virtual DbSet<EmojiMedia> EmojiMedia { get; set; }
         public virtual DbSet<DomainGroup> DomainGroup { get; set; }
+        public virtual DbSet<DomainTracker> DomainTracker { get; set; }
 
         protected override void OnModelCreating(ModelBuilder builder)
         {
@@ -41,6 +42,7 @@ namespace Moobot.Database
             builder.ApplyConfiguration(new MediaConfiguration());
             builder.ApplyConfiguration(new EmojiMediaConfiguration());
             builder.ApplyConfiguration(new DomainGroupConfiguration());
+            builder.ApplyConfiguration(new DomainTrackerConfiguration());
         }
 
         public override int SaveChanges()

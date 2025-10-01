@@ -1,4 +1,4 @@
-﻿    using Discord;
+﻿using Discord;
 using Discord.WebSocket;
 using Moobot.Database;
 using Moobot.Database.Models.Entities;
@@ -7,7 +7,7 @@ using Moobot.Managers;
 using Moobot.Utils;
 using MooBot.Managers.Enums;
 using MooBot.Modules.Handlers;
-using System.Text.RegularExpressions;
+using System.Web;
 
 namespace MooBot.Managers
 {
@@ -48,15 +48,23 @@ namespace MooBot.Managers
                 var host = uri.Host.StartsWith("www.") ? uri.Host[4..] : uri.Host;
                 DomainGroup domainGroup = await dbContext.DomainGroup.GetDomainGroupById(host);
 
-                if (domainGroup == default(DomainGroup)) continue;
+                var queryParams = HttpUtility.ParseQueryString(uri.Query);
 
-                if (domainGroup.Group == DomainGroupEnum.Twitter || domainGroup.Group == DomainGroupEnum.Youtube)
+                if (domainGroup != default(DomainGroup))
                 {
-                    if (!string.IsNullOrEmpty(uri.Query))
+                    List<DomainTracker> domainTrackers = await dbContext.DomainTracker.GetDomainTrackersByDomainGroup(domainGroup.Group);
+
+                    if (domainTrackers.Count != 0)
                     {
-                        hasQueryInUrl = true;
+                        hasQueryInUrl = HasTrackingParameter(uri, domainTrackers);
                     }
                 }
+
+                if (hasQueryInUrl) continue;
+
+                List<DomainTracker> anyTrackers = await dbContext.DomainTracker.GetDomainTrackersByDomainGroup(DomainGroupEnum.Any);
+
+                hasQueryInUrl = HasTrackingParameter(uri, anyTrackers);
             }
 
             if (!hasQueryInUrl) return;
@@ -67,6 +75,18 @@ namespace MooBot.Managers
                 text: "Nice tracker",
                 messageReference: new MessageReference(msg.Id)
             );
+        }
+
+        private static bool HasTrackingParameter(Uri uri, IEnumerable<DomainTracker> trackers)
+        {
+            var queryParams = HttpUtility.ParseQueryString(uri.Query);
+
+            foreach (var tracker in trackers)
+            {
+                if (queryParams[tracker.TrackerParameter] != null) return true;
+            }
+
+            return false;
         }
     }
 }

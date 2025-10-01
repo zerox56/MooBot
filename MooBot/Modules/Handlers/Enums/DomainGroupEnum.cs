@@ -2,6 +2,7 @@
 {
     public enum DomainGroupEnum
     {
+        Any,
         Twitter,
         Pixiv,
         Youtube

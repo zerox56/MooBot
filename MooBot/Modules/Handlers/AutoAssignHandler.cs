@@ -14,6 +14,7 @@ using MooBot.Modules.Handlers.Models.AutoAssign;
 using MooBot.Modules.Handlers.Models.Domains;
 using System;
 using System.Text.RegularExpressions;
+using System.Threading.Channels;
 
 namespace MooBot.Modules.Handlers
 {
@@ -136,7 +137,8 @@ namespace MooBot.Modules.Handlers
                 PostDebugMessage(msg, "Processed but no assignees found", validUrls);
                 return;
             }
-            
+
+            responseMsg.DeleteAsync();
             if (containsSpoiler)
             {
                 responseMsg.ModifyAsync(m => m.Content = $"||{assigneesMsg}||");
@@ -145,7 +147,14 @@ namespace MooBot.Modules.Handlers
             {
                 responseMsg.ModifyAsync(m => m.Content = assigneesMsg);
             }
-                
+
+            var channel = msg.Channel as IMessageChannel;
+
+            await channel.SendMessageAsync(
+                text: containsSpoiler ? $"||{assigneesMsg}||" : assigneesMsg,
+                messageReference: new MessageReference(msg.Id)
+            );
+
 
             shortRemainingData.Value = lastShortRemaining.ToString();
             shortRemainingData.Type = "int";
